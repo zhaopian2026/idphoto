@@ -1,0 +1,2450 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="icon" href="data:,">
+  <title>自助证件照工具箱</title>
+  <style>
+    :root {
+      --brand: #4a90d9;
+      --brand-dark: #2f72b8;
+      --ink: #1f2937;
+      --muted: #687385;
+      --line: #dbe4ef;
+      --soft: #f5f8fc;
+      --danger: #d10000;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+    header {
+      padding: 22px 28px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+    h1 { margin: 0; font-size: 26px; font-weight: 750; }
+    header p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+    main {
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.25fr) minmax(300px, 360px);
+      gap: 18px;
+      padding: 18px;
+      align-items: start;
+    }
+    section {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 47px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .panel-body { padding: 14px; }
+    .upload {
+      display: grid;
+      place-items: center;
+      min-height: 210px;
+      padding: 18px;
+      border: 2px dashed #9ec4ec;
+      border-radius: var(--radius);
+      background: var(--soft);
+      color: var(--brand-dark);
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s ease, background .15s ease;
+    }
+    .upload.dragover { border-color: var(--brand); background: #edf6ff; }
+    .upload strong { display: block; margin-bottom: 8px; font-size: 17px; }
+    .upload span { color: var(--muted); font-size: 13px; }
+    input[type="file"] { display: none; }
+    .canvas-wrap {
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      min-height: 280px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(45deg, #eef2f7 25%, transparent 25%) 0 0 / 20px 20px,
+        linear-gradient(45deg, transparent 75%, #eef2f7 75%) 0 0 / 20px 20px,
+        linear-gradient(45deg, transparent 75%, #eef2f7 75%) 10px 10px / 20px 20px,
+        linear-gradient(45deg, #eef2f7 25%, #fff 25%) 10px 10px / 20px 20px;
+    }
+    canvas {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      image-rendering: auto;
+    }
+    #previewCanvas {
+      width: min(100%, 420px);
+      border-radius: 4px;
+      box-shadow: 0 6px 18px rgba(31,41,55,.12);
+      cursor: grab;
+    }
+    #previewCanvas.brush { cursor: crosshair; }
+    #previewCanvas.dragging { cursor: grabbing; }
+    #originalCanvas { width: 100%; }
+    .preview-panel { position: sticky; top: 14px; }
+    .toolbar {
+      display: grid;
+      gap: 14px;
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .group {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+    .group h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 740;
+    }
+    .group summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      list-style: none;
+      cursor: pointer;
+      user-select: none;
+    }
+    .group summary::-webkit-details-marker { display: none; }
+    .group summary h2 { margin: 0; }
+    .group summary::after {
+      content: "▾";
+      color: var(--muted);
+      font-size: 12px;
+      flex: none;
+      line-height: 1;
+    }
+    .group[open] summary { margin-bottom: 10px; }
+    .group[open] summary::after { content: "▴"; }
+    .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    button, select, input[type="color"], input[type="number"] {
+      font: inherit;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+    button, select {
+      min-height: 36px;
+      padding: 0 11px;
+    }
+    button {
+      cursor: pointer;
+      transition: background .15s ease, border-color .15s ease, color .15s ease;
+    }
+    button:hover { border-color: var(--brand); color: var(--brand-dark); }
+    button.primary { border-color: var(--brand); background: var(--brand); color: #fff; }
+    button.primary:hover { background: var(--brand-dark); color: #fff; }
+    button.active { border-color: var(--brand); background: #eaf4ff; color: var(--brand-dark); }
+    button:disabled { cursor: not-allowed; opacity: .48; }
+    input[type="number"] {
+      width: 82px;
+      min-height: 36px;
+      padding: 0 8px;
+    }
+    .swatch {
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px var(--line);
+    }
+    .swatch.active { box-shadow: 0 0 0 2px var(--brand); }
+    .gradient-blue { background: linear-gradient(180deg, #6bafef, #2a7fd4); }
+    input[type="color"] {
+      width: 42px;
+      height: 42px;
+      padding: 2px;
+      border: 1px solid var(--line);
+      cursor: pointer;
+    }
+    label.control {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr) 42px;
+      gap: 8px;
+      align-items: center;
+      margin: 9px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    input[type="range"] { width: 100%; accent-color: var(--brand); }
+    .value { text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .status {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .hint { color: var(--muted); font-size: 12px; }
+    .layout-preview {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #f8fafc;
+    }
+    #layoutCanvas { width: 100%; }
+    footer {
+      padding: 16px 22px 24px;
+      color: #7a8494;
+      font-size: 12px;
+      text-align: center;
+    }
+    @media (max-width: 980px) {
+      main { grid-template-columns: 1fr; }
+      .preview-panel { position: static; }
+      .toolbar { max-height: none; padding-right: 0; overflow: visible; }
+    }
+    @media (max-width: 820px) {
+      body { -webkit-tap-highlight-color: transparent; }
+      header { padding: 14px 14px 10px; }
+      h1 { font-size: 20px; }
+      header p { font-size: 13px; }
+      main { padding: 12px; gap: 12px; }
+      .panel-title { min-height: 44px; padding: 10px 12px; }
+      .panel-body { padding: 10px; }
+      .upload { min-height: 140px; }
+      .canvas-wrap { min-height: 200px; }
+      button, select, input[type="number"] {
+        min-height: 44px;
+        font-size: 15px;
+      }
+      .swatch, input[type="color"] { width: 50px; height: 50px; }
+      label.control { grid-template-columns: 64px minmax(0, 1fr) 38px; font-size: 14px; }
+      input[type="range"] { height: 30px; }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--brand);
+        border: 2px solid #fff;
+        box-shadow: 0 1px 4px rgba(0,0,0,.3);
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--brand);
+        border: 2px solid #fff;
+      }
+      .grid-2, .grid-3 { gap: 10px; }
+      .row { gap: 10px; }
+      .toolbar { max-height: none; overflow: visible; padding-right: 0; gap: 10px; }
+      /* camera modal: fullscreen on phones */
+      #cameraModal > div {
+        width: 100vw !important;
+        height: 100vh;
+        height: 100dvh;
+        max-width: none;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+      }
+      #cameraVideo {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none !important;
+        object-fit: contain;
+      }
+      #cameraShoot, #cameraClose {
+        flex: 1;
+        min-width: 0 !important;
+        min-height: 48px;
+        font-size: 16px;
+      }
+      footer { padding: 14px 14px 20px; }
+    }
+    .file-warning {
+      display: none;
+      padding: 14px 18px;
+      background: #fff3cd;
+      border-bottom: 2px solid #f0ad4e;
+      color: #856404;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+    .file-warning b { color: #d10000; }
+    .file-warning code {
+      padding: 2px 6px;
+      background: rgba(0,0,0,.06);
+      border-radius: 4px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="file-warning" id="fileWarning">
+    <b>⚠️ 打开方式错误</b>：你正在用 <code>file://</code> 协议直接打开本页面，AI 模型无法加载，会报“local_files_only”错误。<br>
+    请关闭此页，返回文件夹，<b>双击「启动.vbs」</b>运行（会自动开启本地服务并在浏览器打开正确地址）。
+  </div>
+  <header>
+    <h1>自助证件照工具箱</h1>
+    <p>在家搞定证件照，不用去照相馆</p>
+  </header>
+
+  <main>
+    <section>
+      <div class="panel-title">原图面板 <span class="hint" id="imageInfo">未上传</span></div>
+      <div class="panel-body">
+        <label class="upload" id="uploadZone">
+          <input id="fileInput" type="file" accept="image/jpeg,image/png">
+          <span>
+            <strong>上传照片</strong>
+            点击选择 jpg/png，或拖拽图片到这里
+          </span>
+        </label>
+        <button id="cameraBtn" class="primary" style="margin-top:8px;width:100%;">📷 摄像头拍照（没带照片也能现场拍）</button>
+        <div class="canvas-wrap" style="margin-top:12px;">
+          <canvas id="originalCanvas" width="600" height="420"></canvas>
+        </div>
+        <div class="status" id="status">建议使用正面半身照，背景越干净，自动抠图越省心。</div>
+      </div>
+    </section>
+
+    <section class="preview-panel">
+      <div class="panel-title">证件照预览 <span class="hint" id="sizeInfo">1寸 295 x 413px</span></div>
+      <div class="panel-body">
+        <div class="canvas-wrap">
+          <canvas id="previewCanvas" width="295" height="413"></canvas>
+        </div>
+        <div class="status" id="previewHint">上传后可拖动人像微调位置；切到橡皮擦模式后可擦除或恢复背景。</div>
+      </div>
+    </section>
+
+    <aside class="toolbar">
+      <details class="group" open>
+        <summary><h2>底色</h2></summary>
+        <div class="row" id="bgButtons">
+          <button class="swatch active" data-bg="white" title="白色底" style="background:#fff"></button>
+          <button class="swatch" data-bg="blue" title="蓝色底" style="background:#438edb"></button>
+          <button class="swatch" data-bg="red" title="红色底" style="background:#d10000"></button>
+          <button class="swatch gradient-blue" data-bg="gradient" title="渐变蓝底"></button>
+          <input id="customColor" type="color" value="#438edb" title="自定义底色">
+        </div>
+      </details>
+
+      <details class="group" open>
+        <summary><h2>尺寸/模板</h2></summary>
+        <div class="grid-2" id="sizeButtons"></div>
+      </details>
+
+      <details class="group" open>
+        <summary><h2>抠图与橡皮擦</h2></summary>
+        <div class="control" style="font-size:13px;color:#555;">AI 抠图模型：u2net 人像分割（本地运行，完全离线）</div>
+        <label class="checkbox" style="display:flex;align-items:center;gap:6px;margin:6px 0;font-size:13px;">
+          <input type="checkbox" id="autoCleanBg"> 自动清除背景残留（谨慎，可能误删浅色衣物）
+        </label>
+        <label class="control"><span>容差</span><input id="tolerance" type="range" min="10" max="100" value="30"><span class="value" id="tolVal">30</span></label>
+        <div class="grid-2">
+          <button id="eraseBtn">擦除</button>
+          <button id="restoreBtn">恢复</button>
+        </div>
+        <label class="control"><span>笔刷</span><input id="brushSize" type="range" min="5" max="50" value="20"><span class="value" id="brushVal">20</span></label>
+        <button id="brushOff" class="primary" style="width:100%;margin-top:6px;">退出橡皮擦</button>
+        <label class="control"><span>收缩强度</span><input id="edgeShrinkAmt" type="range" min="1" max="3" value="1"><span class="value" id="edgeShrinkVal">1 标准</span></label>
+        <div class="grid-3" style="margin-top:8px;">
+          <button id="edgeShrink">收缩边缘</button>
+          <button id="edgeFeather">柔化边缘</button>
+          <button id="edgeReset">重新抠图</button>
+        </div>
+      </details>
+
+      <details class="group" open>
+        <summary><h2>美颜</h2></summary>
+        <label class="control"><span>磨皮</span><input id="smooth" type="range" min="0" max="100" value="0"><span class="value">0</span></label>
+        <label class="control"><span>美白</span><input id="whiten" type="range" min="0" max="100" value="0"><span class="value">0</span></label>
+        <label class="control"><span>亮眼</span><input id="eyes" type="range" min="0" max="100" value="0"><span class="value">0</span></label>
+        <label class="control"><span>瘦脸</span><input id="slim" type="range" min="0" max="100" value="0"><span class="value">0</span></label>
+        <div class="grid-2" style="margin-top:8px;">
+          <button id="applyBeauty" class="primary">应用美颜</button>
+          <button id="resetBeauty">取消美颜</button>
+        </div>
+      </details>
+
+      <details class="group" open>
+        <summary><h2>正装换装</h2></summary>
+        <div class="row">
+          <select id="outfitSelect" title="正装模板">
+            <option value="none">不换装</option>
+            <option value="whiteShirt">白衬衫</option>
+            <option value="blueShirt">蓝衬衫</option>
+            <option value="darkSuit">深色小西装</option>
+            <option value="girlSuit">深色女款西装</option>
+            <option value="redDress">红色小礼服</option>
+            <option value="grayJacket">深灰外套</option>
+            <option value="khakiJacket">卡其色外套</option>
+            <option value="pinkDress">粉色连衣裙</option>
+          </select>
+        </div>
+        <label class="control"><span>大小</span><input id="outfitScale" type="range" min="70" max="140" value="100"><span class="value">100</span></label>
+        <label class="control"><span>上下</span><input id="outfitY" type="range" min="-80" max="80" value="0"><span class="value">0</span></label>
+        <div class="status">可覆盖原衣服，适合报名照、简历照做基础正装效果。</div>
+      </details>
+
+      <details class="group" open>
+        <summary><h2>排版打印</h2></summary>
+        <div class="row">
+          <select id="paperSelect" title="纸型">
+            <option value="4">4寸纸</option>
+            <option value="5">5寸纸</option>
+            <option value="6" selected>6寸纸</option>
+          </select>
+          <button id="makeLayout" class="primary">生成排版图</button>
+        </div>
+        <div class="layout-preview"><canvas id="layoutCanvas" width="360" height="480"></canvas></div>
+        <div class="status" id="layoutInfo">6寸纸可按当前尺寸自动排版。</div>
+      </details>
+
+      <details class="group" open>
+        <summary><h2>保存</h2></summary>
+        <div class="grid-2">
+          <button id="savePhoto" class="primary">保存证件照</button>
+          <button id="saveLayout">保存排版图</button>
+        </div>
+        <button id="precheck" style="width:100%;margin-top:8px;">保存前预检</button>
+      </details>
+
+      <details class="group" open>
+        <summary><h2>报名压缩</h2></summary>
+        <div class="row">
+          <select id="kbSelect" title="目标大小">
+            <option value="20">20KB</option>
+            <option value="50" selected>50KB</option>
+            <option value="100">100KB</option>
+            <option value="200">200KB</option>
+            <option value="custom">自定义</option>
+          </select>
+          <input id="customKb" type="number" min="10" max="1000" value="50" title="自定义KB">
+        </div>
+        <button id="saveCompressed" class="primary" style="width:100%;margin-top:8px;">压缩保存 JPG</button>
+        <div class="status" id="compressInfo">适合报名网站要求小于指定 KB 的场景。</div>
+      </details>
+    </aside>
+  </main>
+
+  <div id="cameraModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:16px;width:min(92vw,560px);">
+      <div style="font-size:16px;font-weight:600;margin-bottom:10px;">📷 摄像头拍照</div>
+      <video id="cameraVideo" autoplay playsinline style="width:100%;max-height:58vh;border-radius:8px;background:#000;transform:scaleX(-1);"></video>
+      <div style="display:flex;gap:10px;margin-top:12px;justify-content:center;">
+        <button id="cameraShoot" class="primary" style="min-width:120px;">拍照</button>
+        <button id="cameraClose" style="min-width:120px;">取消</button>
+      </div>
+      <div class="status" id="cameraHint">正对镜头，光线充足、背景简单、穿深色衣服时效果最好。</div>
+    </div>
+  </div>
+
+  <footer>本工具所有处理均在您的电脑本地完成，不上传照片到任何服务器</footer>
+
+  <script type="module">
+    // Transformers.js v3 为 ES Module 构建，需用 type="module" 导入后再挂到 window.Transformers
+    import * as Transformers from './lib/transformers.min.js';
+    window.Transformers = Transformers;
+    window.dispatchEvent(new Event('transformers-ready'));
+  </script>
+  <script>
+    // 防误操作：直接双击 HTML 会用 file:// 协议打开，AI 模型加载会失败
+    if (location.protocol === 'file:') {
+      const w = document.getElementById('fileWarning');
+      if (w) {
+        if (window.innerWidth <= 820) {
+          w.innerHTML = '<b>⚠️ 打开方式错误</b>：手机版必须通过网址（HTTPS）打开，AI 模型才能正常加载。<br>请关闭此页，用浏览器打开托管网址访问。';
+        }
+        w.style.display = 'block';
+      }
+    }
+
+    // === AI 抠图模型设置（transformers.js v3 + onnxruntime-web WASM）===
+    // v3 的 transformers.min.js 是 ES Module，模块脚本会延后执行，因此这里采用懒加载：
+    // 等到 window.Transformers 就绪后再初始化 env 并加载模型。
+    let TransformersLib = null;
+    let tfReadyPromise = null;
+    function transformersReady() {
+      if (!tfReadyPromise) {
+        tfReadyPromise = new Promise((resolve, reject) => {
+          const check = () => {
+            if (window.Transformers) {
+              TransformersLib = window.Transformers;
+              applyTfEnv();
+              resolve(TransformersLib);
+            }
+          };
+          if (window.Transformers) return check();
+          window.addEventListener('transformers-ready', check, { once: true });
+          setTimeout(() => {
+            if (!TransformersLib) reject(new Error('transformers.js 加载超时，请确认通过启动.vbs启动（不要直接双击HTML）。'));
+          }, 30000);
+        });
+      }
+      return tfReadyPromise;
+    }
+    function applyTfEnv() {
+      const env = TransformersLib.env;
+      // Determine base directory of this HTML
+      const path = window.location.href;
+      const HTML_BASE = path.substring(0, path.lastIndexOf('/') + 1);
+      // Configure Transformers.js for offline use (v3)
+      env.localModelPath = HTML_BASE + 'models/';
+      env.allowLocalModels = true;      // v3 浏览器端默认关闭本地模型，需显式开启
+      env.allowRemoteModels = false;
+      env.useBrowserCache = false;
+      // Point WASM backends to lib/ folder（v3 对应 ort-wasm-simd-threaded.jsep.mjs/.wasm）
+      if (env.backends && env.backends.onnx && env.backends.onnx.wasm) {
+        env.backends.onnx.wasm.wasmPaths = HTML_BASE + 'lib/';
+        // 若服务器带 COOP/COEP 头（跨源隔离）则自动多线程加速，否则 ORT 自动回退单线程
+        env.backends.onnx.wasm.numThreads = Math.min(4, navigator.hardwareConcurrency || 4);
+      }
+    }
+
+    let rmbgModel = null;
+    let rmbgInitPromise = null; // 加载中的 Promise，避免重复并发加载
+
+    // 唯一的抠图模型：jellybox/u2net-human-seg（Apache-2.0 可商用，int8，44MB，人像分割更完整）
+    async function initRmbgModel() {
+      if (rmbgModel) return;
+      if (!rmbgInitPromise) {
+        rmbgInitPromise = loadRmbgModel().catch(err => {
+          rmbgInitPromise = null; // 失败后允许重试
+          throw err;
+        });
+      }
+      return rmbgInitPromise;
+    }
+    async function loadRmbgModel() {
+      const { AutoModel } = await transformersReady();
+      const modelId = 'jellybox/u2net-human-seg';
+      const opts = { config: { model_type: 'custom' }, quantized: true, device: 'wasm' };
+      opts.progress_callback = p => {
+        if (p && p.status === 'progress') {
+          const pct = Math.round(p.progress >= 1 ? p.progress : p.progress * 100);
+          setStatus('正在加载u2net人像分割模型… ' + pct + '%');
+        }
+      };
+      try {
+        setStatus('正在加载u2net人像分割模型（约5-15秒）…');
+        rmbgModel = await AutoModel.from_pretrained(modelId, opts);
+        setStatus('AI模型就绪，请上传照片');
+      } catch (e) {
+        console.error('Model init error:', e);
+        setStatus('模型加载失败：' + (e.message || e));
+        rmbgModel = null;
+        throw e;
+      }
+    }
+
+
+    // u2net-human-seg 预处理：拉伸到 320x320，ImageNet 归一化，转 [1,3,320,320] float32
+    async function buildU2netTensor(src) {
+      const N = 320;
+      const c = document.createElement('canvas');
+      c.width = N;
+      c.height = N;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(src, 0, 0, N, N);
+      const d = ctx.getImageData(0, 0, N, N).data;
+      const mean = [0.485, 0.456, 0.406];
+      const std = [0.229, 0.224, 0.225];
+      const n = N * N;
+      const data = new Float32Array(3 * n);
+      for (let i = 0; i < n; i++) {
+        data[i] = (d[i * 4] / 255 - mean[0]) / std[0];
+        data[n + i] = (d[i * 4 + 1] / 255 - mean[1]) / std[1];
+        data[2 * n + i] = (d[i * 4 + 2] / 255 - mean[2]) / std[2];
+      }
+      const { Tensor } = await transformersReady();
+      return new Tensor('float32', data, [1, 3, N, N]);
+    }
+    // 页面打开后后台预加载 AI 模型，减少首次点击"AI抠图"的等待
+    async function preloadAiModel() {
+      try {
+        if (!rmbgModel && !rmbgInitPromise && !S.imgCanvas) {
+          setStatus('正在后台预加载AI模型（u2net，约5-15秒）…');
+          await initRmbgModel();
+        }
+      } catch (e) { /* 静默：用户点击抠图时按需再加载 */ }
+    }
+
+    const sizes = [
+      { key: 'one', name: '1寸', mm: '25x35mm', w: 295, h: 413 },
+      { key: 'smallOne', name: '小1寸', mm: '22x32mm', w: 260, h: 378 },
+      { key: 'two', name: '2寸', mm: '35x49mm', w: 413, h: 579 },
+      { key: 'smallTwo', name: '小2寸', mm: '35x45mm', w: 413, h: 531 },
+      { key: 'largeTwo', name: '大2寸', mm: '35x53mm', w: 413, h: 625 },
+      { key: 'beauty', name: '5寸美照', mm: '50x50mm', w: 590, h: 590 },
+      { key: 'teacher', name: '教资报名', mm: '常用295x413px', w: 295, h: 413 },
+      { key: 'driver', name: '驾驶证', mm: '22x32mm', w: 260, h: 378 },
+      { key: 'passport', name: '护照', mm: '33x48mm', w: 390, h: 567 },
+      { key: 'visa', name: '签证35x45', mm: '35x45mm', w: 413, h: 531 },
+      { key: 'social', name: '社保卡', mm: '常用358x441px', w: 358, h: 441 },
+      { key: 'resume', name: '简历照', mm: '35x45mm', w: 413, h: 531 }
+    ];
+    const papers = {
+      4: { name: '4寸纸', w: 1200, h: 1800 },
+      5: { name: '5寸纸', w: 1500, h: 2100 },
+      6: { name: '6寸纸', w: 1800, h: 2400 }
+    };
+    const S = {
+      imgCanvas: null,
+      originalData: null,
+      maskCanvas: null,
+      cutoutCanvas: null,
+      beautyCanvas: null,
+      finalCanvas: null,
+      layoutCanvas: null,
+      background: { type: 'solid', color: '#ffffff', label: '白底' },
+      outfit: { type: 'none', scale: 100, y: 0 },
+      size: sizes[0],
+      tolerance: 30,
+      autoCleanBg: false,     // 保守版背景残留清除开关
+      edgeShrink: 1,          // 收缩边缘强度 1轻/2标准/3强
+      brushMode: null,
+      brushSize: 20,
+      brushX: 0,
+      brushY: 0,
+      offsetX: 0,
+      offsetY: 0,
+      scale: 1,
+      faceBox: null,
+      dragging: false,
+      brushing: false,
+      pointer: null
+    };
+    const $ = id => document.getElementById(id);
+    const originalCanvas = $('originalCanvas');
+    const previewCanvas = $('previewCanvas');
+    const layoutCanvas = $('layoutCanvas');
+    const octx = originalCanvas.getContext('2d');
+    const pctx = previewCanvas.getContext('2d');
+    const lctx = layoutCanvas.getContext('2d');
+
+    init();
+
+    // mobile narrow screen: auto-collapse less-used groups
+    function setupMobileGroups() {
+      if (window.innerWidth > 820) return;
+      const keepOpen = ['底色', '尺寸/模板', '抠图与橡皮擦', '保存'];
+      document.querySelectorAll('details.group').forEach(d => {
+        const t = d.querySelector('summary h2');
+        d.open = t && keepOpen.includes(t.textContent.trim());
+      });
+    }
+
+    function init() {
+      setupMobileGroups();
+      buildSizeButtons();
+      bindUpload();
+      bindControls();
+      drawEmpty();
+      // 衣服异步加载，不阻塞主流程
+      setTimeout(preloadClothing, 50);
+      // 后台预加载 AI 模型，减少首次"AI抠图"的等待
+      setTimeout(preloadAiModel, 2000);
+    }
+
+    function buildSizeButtons() {
+      const box = $('sizeButtons');
+      sizes.forEach((item, index) => {
+        const btn = document.createElement('button');
+        btn.textContent = item.name;
+        btn.title = item.mm;
+        btn.className = index === 0 ? 'active' : '';
+        btn.onclick = () => {
+          S.size = item;
+          [...box.children].forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          $('sizeInfo').textContent = `${item.name} ${item.w} x ${item.h}px`;
+          renderAll();
+        };
+        box.appendChild(btn);
+      });
+    }
+
+    function bindUpload() {
+      const zone = $('uploadZone');
+      const input = $('fileInput');
+      zone.addEventListener('click', () => input.click());
+      input.addEventListener('change', e => {
+        if (e.target.files[0]) handleFileUpload(e.target.files[0]);
+        input.value = '';
+      });
+      ['dragenter', 'dragover'].forEach(type => zone.addEventListener(type, e => {
+        e.preventDefault();
+        zone.classList.add('dragover');
+      }));
+      ['dragleave', 'drop'].forEach(type => zone.addEventListener(type, e => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+      }));
+      zone.addEventListener('drop', e => {
+        const file = [...e.dataTransfer.files].find(f => /^image\/(jpeg|png)$/.test(f.type));
+        if (file) handleFileUpload(file);
+      });
+    }
+
+    // ============ 摄像头拍照（没带照片也能现场拍） ============
+    let cameraStream = null;
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+      }
+      const v = $('cameraVideo');
+      if (v) v.srcObject = null;
+      $('cameraModal').style.display = 'none';
+    }
+    async function openCamera() {
+      const modal = $('cameraModal');
+      const hint = $('cameraHint');
+      modal.style.display = 'flex';
+      hint.textContent = '正在打开摄像头…';
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('当前环境不支持摄像头（请用程序窗口模式，或 Chrome/Edge 浏览器）');
+        }
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } }
+        });
+        $('cameraVideo').srcObject = cameraStream;
+        hint.textContent = '正对镜头，光线充足、背景简单、穿深色衣服时效果最好。';
+      } catch (e) {
+        const msg = e && e.message ? e.message : String(e);
+        if (/NotFound|DevicesNotFound/i.test(msg)) {
+          hint.textContent = '未检测到摄像头，请确认摄像头已连接并允许本程序使用。';
+        } else if (/NotAllowed|Permission|denied|拒绝/i.test(msg)) {
+          hint.textContent = '摄像头权限被拒绝：请在系统/浏览器设置里允许本程序使用摄像头后重试。';
+        } else {
+          hint.textContent = '摄像头打开失败：' + msg;
+        }
+        stopCamera();
+      }
+    }
+    function captureFromCamera() {
+      const video = $('cameraVideo');
+      if (!video.videoWidth || !video.videoHeight) {
+        $('cameraHint').textContent = '画面还没就绪，请稍候再拍。';
+        return;
+      }
+      const c = document.createElement('canvas');
+      c.width = video.videoWidth;
+      c.height = video.videoHeight;
+      const ctx = c.getContext('2d');
+      // 与预览一致（镜像），所见即所得
+      ctx.translate(c.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0);
+      stopCamera();
+      processCapturedCanvas(c);
+    }
+    function processCapturedCanvas(canvas) {
+      S.imgCanvas = canvas;
+      S.originalData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      drawOriginal();
+      setStatus('正在AI抠图中…（约需10-20秒，请稍候）');
+      $('imageInfo').textContent = canvas.width + ' x ' + canvas.height + 'px';
+      autoCutout()
+        .then(() => { resetPlacement(); renderAll(); setStatus('拍照完成，AI抠图已生成。'); })
+        .catch(err => {
+          console.error('拍照抠图出错：', err);
+          setStatus('抠图处理失败：' + (err && err.message ? err.message : '未知错误'));
+        });
+    }
+
+    function bindControls() {
+      // ---- 摄像头拍照 ----
+      $('cameraBtn').onclick = openCamera;
+      $('cameraShoot').onclick = captureFromCamera;
+      $('cameraClose').onclick = stopCamera;
+
+      $('tolerance').addEventListener('input', e => {
+        S.tolerance = +e.target.value;
+        $('tolVal').textContent = S.tolerance;
+        // AI抠图不需要容差参数，无需重新抠图
+      });
+
+      // ---- 背景清除选项 ----
+      $('autoCleanBg').addEventListener('change', e => {
+        S.autoCleanBg = e.target.checked;
+        if (S.rawMask) { refineFromRaw(); setStatus('已按新设置重新处理（快速）。'); }
+      });
+      $('brushSize').addEventListener('input', e => {
+        S.brushSize = +e.target.value;
+        $('brushVal').textContent = S.brushSize;
+      });
+      $('eraseBtn').onclick = () => setBrushMode('erase');
+      $('restoreBtn').onclick = () => setBrushMode('restore');
+      $('brushOff').onclick = () => setBrushMode(null);
+      $('applyBeauty').onclick = renderAll;
+      $('resetBeauty').onclick = () => {
+        ['smooth', 'whiten', 'eyes', 'slim'].forEach(id => {
+          $(id).value = 0;
+          $(id).closest('label').querySelector('.value').textContent = '0';
+        });
+        renderAll();
+      };
+      ['smooth', 'whiten', 'eyes', 'slim'].forEach(id => {
+        $(id).addEventListener('input', e => {
+          e.target.closest('label').querySelector('.value').textContent = e.target.value;
+          renderAll();
+        });
+      });
+      $('bgButtons').addEventListener('click', e => {
+        const btn = e.target.closest('[data-bg]');
+        if (!btn) return;
+        [...$('bgButtons').querySelectorAll('.swatch')].forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const type = btn.dataset.bg;
+        if (type === 'white') S.background = { type: 'solid', color: '#ffffff', label: '白底' };
+        if (type === 'blue') S.background = { type: 'solid', color: '#438edb', label: '蓝底' };
+        if (type === 'red') S.background = { type: 'solid', color: '#d10000', label: '红底' };
+        if (type === 'gradient') S.background = { type: 'gradient', color: '#438edb', label: '渐变蓝底' };
+        renderAll();
+      });
+      $('customColor').addEventListener('input', e => {
+        [...$('bgButtons').querySelectorAll('.swatch')].forEach(b => b.classList.remove('active'));
+        S.background = { type: 'solid', color: e.target.value, label: '自定义底' };
+        renderAll();
+      });
+      $('makeLayout').onclick = () => makeLayout(true);
+      $('savePhoto').onclick = () => downloadCanvas(S.finalCanvas || previewCanvas, photoName(false));
+      $('saveLayout').onclick = () => {
+        if (!S.layoutCanvas) makeLayout(false);
+        downloadCanvas(S.layoutCanvas, photoName(true));
+      };
+      bindCanvasPointer();
+
+      // ---- 正装换装 ----
+      $('outfitSelect').addEventListener('change', e => {
+        S.outfit.type = e.target.value;
+        renderAll();
+      });
+      $('outfitScale').addEventListener('input', e => {
+        S.outfit.scale = +e.target.value;
+        e.target.closest('label').querySelector('.value').textContent = e.target.value;
+        renderAll();
+      });
+      $('outfitY').addEventListener('input', e => {
+        S.outfit.y = +e.target.value;
+        e.target.closest('label').querySelector('.value').textContent = e.target.value;
+        renderAll();
+      });
+
+      // ---- 报名压缩 ----
+      $('kbSelect').addEventListener('change', () => {
+        $('customKb').style.display = $('kbSelect').value === 'custom' ? '' : 'none';
+      });
+      $('saveCompressed').onclick = () => compressAndSave();
+
+      // ---- 边缘优化 ----
+      $('edgeShrinkAmt').addEventListener('input', e => {
+        S.edgeShrink = +e.target.value;
+        const names = { 1: '1 轻', 2: '2 标准', 3: '3 强' };
+        $('edgeShrinkVal').textContent = names[S.edgeShrink] || S.edgeShrink;
+      });
+      $('edgeShrinkAmt').addEventListener('change', e => {
+        S.edgeShrink = +e.target.value;
+        if (S.maskCanvas) applyEdgeShrink();
+        else setStatus('收缩强度已设为' + S.edgeShrink + '（上传照片后自动生效）。');
+      });
+      $('edgeShrink').onclick = () => { applyEdgeShrink(); };
+      $('edgeFeather').onclick = () => { applyEdgeFeather(); setStatus('已执行边缘柔化。'); };
+      $('edgeReset').onclick = async () => {
+        if (S.rawMask) { S.shrink = 0; refineFromRaw(); }
+        else if (S.imgCanvas) { await autoCutout(); resetPlacement(); renderAll(); setStatus('已重置抠图。'); }
+      };
+
+      // ---- 保存前预检 ----
+      $('precheck').onclick = () => runPrecheck();
+    }
+
+    function setBrushMode(mode) {
+      S.brushMode = mode;
+      $('eraseBtn').classList.toggle('active', mode === 'erase');
+      $('restoreBtn').classList.toggle('active', mode === 'restore');
+      previewCanvas.classList.toggle('brush', !!mode);
+    }
+
+    function bindCanvasPointer() {
+      previewCanvas.addEventListener('pointerdown', e => {
+        if (!S.imgCanvas) return;
+        previewCanvas.setPointerCapture(e.pointerId);
+        const pos = eventToCanvas(e, previewCanvas);
+        if (S.brushMode) {
+          S.brushing = true;
+          paintMask(pos.x, pos.y);
+        } else {
+          S.dragging = true;
+          S.pointer = { x: e.clientX, y: e.clientY, ox: S.offsetX, oy: S.offsetY };
+          previewCanvas.classList.add('dragging');
+        }
+      });
+      previewCanvas.addEventListener('pointermove', e => {
+        if (S.brushing && S.brushMode) {
+          paintMask(...Object.values(eventToCanvas(e, previewCanvas)));
+          return;
+        }
+        if (!S.dragging || !S.pointer) return;
+        const dx = (e.clientX - S.pointer.x) / S.scale;
+        const dy = (e.clientY - S.pointer.y) / S.scale;
+        S.offsetX = S.pointer.ox + dx;
+        S.offsetY = S.pointer.oy + dy;
+        clampPlacement();
+        renderAll();
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => previewCanvas.addEventListener(type, () => {
+        S.dragging = false;
+        S.brushing = false;
+        S.pointer = null;
+        previewCanvas.classList.remove('dragging');
+      }));
+      previewCanvas.addEventListener('pointermove', e => {
+        if (!S.brushMode) return;
+        const pos = eventToCanvas(e, previewCanvas);
+        S.brushX = pos.x; S.brushY = pos.y;
+        $('previewHint').textContent = `${S.brushMode === 'erase' ? '擦除' : '恢复'}模式：笔刷中心 ${Math.round(pos.x)}, ${Math.round(pos.y)}`;
+        if (!S.brushing) {
+          // Redraw final canvas + ring overlay without full renderAll
+          pctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+          if (S.finalCanvas) pctx.drawImage(S.finalCanvas, 0, 0);
+          drawBrushRing();
+        }
+      });
+    }
+
+    function eventToCanvas(e, canvas) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (e.clientX - rect.left) * (canvas.width / rect.width),
+        y: (e.clientY - rect.top) * (canvas.height / rect.height)
+      };
+    }
+
+    function getExifOrientation(arrayBuffer) {
+      const view = new DataView(arrayBuffer);
+      if (view.byteLength < 2 || view.getUint16(0, false) !== 0xffd8) return 1;
+      let offset = 2;
+      while (offset < view.byteLength) {
+        const marker = view.getUint16(offset, false);
+        if (marker === 0xffe1) {
+          offset += 2;
+          if (view.getUint32(offset, false) !== 0x45786966) return 1;
+          offset += 6;
+          const little = view.getUint16(offset, false) === 0x4949;
+          offset += view.getUint32(offset + 4, little);
+          const tags = view.getUint16(offset, little);
+          offset += 2;
+          for (let i = 0; i < tags; i++) {
+            const tagOffset = offset + i * 12;
+            if (view.getUint16(tagOffset, little) === 0x0112) return view.getUint16(tagOffset + 8, little);
+          }
+          return 1;
+        }
+        if ((marker & 0xff00) !== 0xff00) break;
+        offset += 2 + view.getUint16(offset + 2, false);
+      }
+      return 1;
+    }
+
+    function rotateCanvasByExif(sourceCanvas, orientation) {
+      const w = sourceCanvas.width, h = sourceCanvas.height;
+      const canvas = document.createElement('canvas');
+      canvas.width = orientation >= 5 && orientation <= 8 ? h : w;
+      canvas.height = orientation >= 5 && orientation <= 8 ? w : h;
+      const ctx = canvas.getContext('2d');
+      switch (orientation) {
+        case 2: ctx.translate(canvas.width, 0); ctx.scale(-1, 1); break;
+        case 3: ctx.translate(canvas.width, canvas.height); ctx.rotate(Math.PI); break;
+        case 4: ctx.translate(0, canvas.height); ctx.scale(1, -1); break;
+        case 5: ctx.rotate(0.5 * Math.PI); ctx.scale(1, -1); break;
+        case 6: ctx.translate(canvas.width, 0); ctx.rotate(0.5 * Math.PI); break;
+        case 7: ctx.translate(canvas.width, 0); ctx.rotate(0.5 * Math.PI); ctx.scale(-1, 1); break;
+        case 8: ctx.translate(0, canvas.height); ctx.rotate(-0.5 * Math.PI); break;
+      }
+      ctx.drawImage(sourceCanvas, 0, 0);
+      return canvas;
+    }
+
+    function handleFileUpload(file) {
+      if (!/^image\/(jpeg|png)$/.test(file.type)) {
+        setStatus('请上传 jpg、jpeg 或 png 图片。');
+        return;
+      }
+      setStatus('正在读取照片并处理 EXIF 方向...');
+      const reader1 = new FileReader();
+      reader1.onload = e => {
+        const orientation = getExifOrientation(e.target.result);
+        const reader2 = new FileReader();
+        reader2.onload = e2 => {
+          const img = new Image();
+          img.onload = async () => {
+            try {
+              const temp = canvasFromImage(img);
+              let rotated = rotateCanvasByExif(temp, orientation);
+              rotated = limitCanvas(rotated, 4000);
+              S.imgCanvas = rotated;
+              S.originalData = rotated.getContext('2d').getImageData(0, 0, rotated.width, rotated.height);
+              drawOriginal();
+              await autoCutout();
+              resetPlacement();
+              renderAll();
+              $('imageInfo').textContent = `${rotated.width} x ${rotated.height}px`;
+              setStatus(`已完成上传，AI抠图已生成。`);
+            } catch (err) {
+              console.error('处理照片时出错：', err);
+              setStatus('处理出错：' + (err && err.message ? err.message : '未知错误'));
+            }
+          };
+          img.src = e2.target.result;
+        };
+        reader2.readAsDataURL(file);
+      };
+      reader1.readAsArrayBuffer(file);
+    }
+
+    function canvasFromImage(img) {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth || img.width;
+      c.height = img.naturalHeight || img.height;
+      c.getContext('2d').drawImage(img, 0, 0);
+      return c;
+    }
+
+    function limitCanvas(canvas, maxWidth) {
+      if (canvas.width <= maxWidth) return canvas;
+      const scale = maxWidth / canvas.width;
+      const c = document.createElement('canvas');
+      c.width = maxWidth;
+      c.height = Math.round(canvas.height * scale);
+      c.getContext('2d').drawImage(canvas, 0, 0, c.width, c.height);
+      return c;
+    }
+
+    function drawOriginal() {
+      const c = S.imgCanvas;
+      const maxW = 900;
+      originalCanvas.width = Math.min(maxW, c.width);
+      originalCanvas.height = Math.round(c.height * originalCanvas.width / c.width);
+      octx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
+      octx.drawImage(c, 0, 0, originalCanvas.width, originalCanvas.height);
+    }
+
+    // 把模型输出的掩码张量（方形，如 [1,1,1024,1024]）双线性放大到原图尺寸。
+    // u2net-human-seg 输出为 0~1 掩码，直接取像素值。
+    function upscaleMask(tensor, tw, th) {
+      const dims = tensor.dims || [];
+      const S = dims[dims.length - 1] || 512;
+      const data = tensor.data;
+      const out = new Uint8ClampedArray(tw * th);
+      for (let y = 0; y < th; y++) {
+        const syf = (y + 0.5) * S / th - 0.5;
+        const sy0 = Math.max(0, Math.min(S - 1, Math.floor(syf)));
+        const sy1 = Math.max(0, Math.min(S - 1, sy0 + 1));
+        const fy = syf - sy0;
+        const row0 = sy0 * S, row1 = sy1 * S;
+        for (let x = 0; x < tw; x++) {
+          const sxf = (x + 0.5) * S / tw - 0.5;
+          const sx0 = Math.max(0, Math.min(S - 1, Math.floor(sxf)));
+          const sx1 = Math.max(0, Math.min(S - 1, sx0 + 1));
+          const fx = sxf - sx0;
+          const v00 = data[row0 + sx0], v01 = data[row0 + sx1];
+          const v10 = data[row1 + sx0], v11 = data[row1 + sx1];
+          const v = v00 * (1 - fx) * (1 - fy) + v01 * fx * (1 - fy) + v10 * (1 - fx) * fy + v11 * fx * fy;
+          out[y * tw + x] = Math.round(255 * Math.max(0, Math.min(1, v)));
+        }
+      }
+      return out;
+    }
+    async function autoCutout() {
+      try {
+        // Ensure model is loaded
+        if (!rmbgModel) {
+          setStatus('正在加载AI模型…');
+          await initRmbgModel();
+        }
+        setStatus('AI抠图中…（约需10-20秒，请稍候）');
+
+        const src = S.imgCanvas;
+        const w = src.width, h = src.height;
+        
+        // Get image data from canvas
+        const imgData = src.getContext('2d').getImageData(0, 0, w, h);
+        
+        // 推理：u2net-human-seg 输入 input.1（1,3,320,320），输出多张掩码，取第一张
+        let alpha8;
+        {
+          const pixel_values = await buildU2netTensor(src);
+          const outputs = await rmbgModel({ 'input.1': pixel_values });
+          const output = Object.values(outputs)[0];
+          alpha8 = upscaleMask(output, w, h);
+        }
+        
+        // Create foreground: original image with alpha = mask
+        const cutoutCanvas = document.createElement('canvas');
+        cutoutCanvas.width = w;
+        cutoutCanvas.height = h;
+        const ctx = cutoutCanvas.getContext('2d');
+        ctx.putImageData(imgData, 0, 0);
+        
+        // Apply mask as alpha channel
+        const fgData = ctx.getImageData(0, 0, w, h);
+        for (let i = 0; i < w * h; i++) {
+          fgData.data[i * 4 + 3] = alpha8[i];
+        }
+        ctx.putImageData(fgData, 0, 0);
+        
+        S.cutoutCanvas = cutoutCanvas;
+        S.rawMask = cloneCanvas(cutoutCanvas);
+        S.shrink = 0;
+        
+        // AI后处理：清背景色残留 → 平滑mask填麻点 → 去色边
+        S.cutoutCanvas = applyPostProcessing(S.rawMask);
+        
+        setStatus('AI抠图完成！可换背景/美颜/换装');
+      } catch (err) {
+        console.error('AI抠图出错：', err);
+        setStatus('抠图处理失败：' + (err && err.message ? err.message : '未知错误'));
+        throw err;
+      }
+    }
+
+    // 平滑AI mask：3x3高斯模糊 + 阈值化 + 形态学闭运算（膨胀再腐蚀）填洞
+    // 解决人脸/衣物上出现"麻点"（mask小空洞导致背景透过来）的问题
+    // 3x3 腐蚀（半径1）
+    function erodeMask(bin, w, h, r) {
+      const n = w * h;
+      const out = new Uint8Array(n);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          let ok = 1;
+          for (let ky = -r; ky <= r; ky++) {
+            const ny = y + ky;
+            if (ny < 0 || ny >= h) { ok = 0; break; }
+            for (let kx = -r; kx <= r; kx++) {
+              const nx = x + kx;
+              if (nx < 0 || nx >= w) { ok = 0; break; }
+              if (!bin[ny * w + nx]) { ok = 0; break; }
+            }
+            if (!ok) break;
+          }
+          out[y * w + x] = ok;
+        }
+      }
+      return out;
+    }
+
+    // 3x3 膨胀（半径1）
+    function dilateMask(bin, w, h, r) {
+      const n = w * h;
+      const out = new Uint8Array(n);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          let any = 0;
+          for (let ky = -r; ky <= r; ky++) {
+            const ny = y + ky;
+            if (ny < 0 || ny >= h) continue;
+            for (let kx = -r; kx <= r; kx++) {
+              const nx = x + kx;
+              if (nx < 0 || nx >= w) continue;
+              if (bin[ny * w + nx]) { any = 1; break; }
+            }
+            if (any) break;
+          }
+          out[y * w + x] = any;
+        }
+      }
+      return out;
+    }
+
+    // 只保留最大的连通主体（4邻域），彻底删除背景上的残留斑点
+    function keepLargestComponent(bin, w, h) {
+      const n = w * h;
+      const labels = new Int32Array(n).fill(-1);
+      const sizes = [];
+      for (let idx = 0; idx < n; idx++) {
+        if (!bin[idx] || labels[idx] >= 0) continue;
+        const queue = [idx];
+        labels[idx] = sizes.length;
+        let size = 0;
+        while (queue.length) {
+          const p = queue.pop();
+          size++;
+          const x = p % w, y = (p / w) | 0;
+          if (y > 0) { const q = p - w; if (bin[q] && labels[q] < 0) { labels[q] = labels[p]; queue.push(q); } }
+          if (y < h - 1) { const q = p + w; if (bin[q] && labels[q] < 0) { labels[q] = labels[p]; queue.push(q); } }
+          if (x > 0) { const q = p - 1; if (bin[q] && labels[q] < 0) { labels[q] = labels[p]; queue.push(q); } }
+          if (x < w - 1) { const q = p + 1; if (bin[q] && labels[q] < 0) { labels[q] = labels[p]; queue.push(q); } }
+        }
+        sizes.push(size);
+      }
+      if (sizes.length === 0) return bin;
+      let best = 0;
+      for (let i = 1; i < sizes.length; i++) if (sizes[i] > sizes[best]) best = i;
+      const keep = new Uint8Array(n);
+      for (let i = 0; i < n; i++) if (labels[i] === best) keep[i] = 1;
+      return keep;
+    }
+    // 保守版背景残留清除（v9）：只删除与图像边缘相连、面积很小（<0.8% 全图）且颜色接近
+    // 边缘背景色簇的前景碎块；大面积衣物/人物主体一律不碰。
+    // 注：v8 的激进版（背景色蔓延+二次冷色清理）会误删浅色裤腿/衣物造成“斑点”，已停用。
+    function removeBackdropFlood(canvas) {
+      const c = cloneCanvas(canvas);
+      const ctx = c.getContext('2d');
+      const img = ctx.getImageData(0, 0, c.width, c.height);
+      const w = c.width, h = c.height, n = w * h;
+      const data = img.data;
+      const alpha = new Uint8Array(n);
+      for (let i = 0; i < n; i++) alpha[i] = data[i * 4 + 3];
+
+      // 四边取样蒙版像素（alpha>=100 视为“模型认为的前景”）作为背景色候选
+      const edgePx = [];
+      for (let x = 0; x < w; x += 4) { const t1 = x, t2 = (h - 1) * w + x; if (alpha[t1] >= 100) edgePx.push(t1); if (alpha[t2] >= 100) edgePx.push(t2); }
+      for (let y = 0; y < h; y += 4) { const l1 = y * w, l2 = y * w + (w - 1); if (alpha[l1] >= 100) edgePx.push(l1); if (alpha[l2] >= 100) edgePx.push(l2); }
+      if (edgePx.length < 12) return c;
+
+      // k-means(k=2) 背景代表色
+      const K = 2;
+      const cents = [];
+      cents.push([data[edgePx[0]*4], data[edgePx[0]*4+1], data[edgePx[0]*4+2]]);
+      let far = edgePx[0], bd = -1;
+      for (const s of edgePx) { const d = Math.abs(data[s*4]-cents[0][0]) + Math.abs(data[s*4+1]-cents[0][1]) + Math.abs(data[s*4+2]-cents[0][2]); if (d > bd) { bd = d; far = s; } }
+      cents.push([data[far*4], data[far*4+1], data[far*4+2]]);
+      for (let iter = 0; iter < 6; iter++) {
+        const sums = [[0,0,0,0],[0,0,0,0]];
+        for (let si = 0; si < edgePx.length; si++) {
+          const s = edgePx[si], r = data[s*4], g = data[s*4+1], b = data[s*4+2];
+          let bi = 0, bdi = Infinity;
+          for (let k = 0; k < K; k++) { const d = Math.abs(r-cents[k][0]) + Math.abs(g-cents[k][1]) + Math.abs(b-cents[k][2]); if (d < bdi) { bdi = d; bi = k; } }
+          sums[bi][0]+=r; sums[bi][1]+=g; sums[bi][2]+=b; sums[bi][3]++;
+        }
+        for (let k = 0; k < K; k++) { if (sums[k][3] > 0) { cents[k][0] = sums[k][0]/sums[k][3]; cents[k][1] = sums[k][1]/sums[k][3]; cents[k][2] = sums[k][2]/sums[k][3]; } }
+      }
+
+      const tol = 50;
+      const maxArea = Math.round(n * 0.008);
+      // 连通域分析
+      const comp = new Int32Array(n).fill(-1);
+      const sizes = [];
+      let next = 0;
+      const topPix = edgePx[0];
+      for (let idx = 0; idx < n; idx++) {
+        if (alpha[idx] < 100 || comp[idx] >= 0) continue;
+        const stack = [idx]; comp[idx] = next;
+        let sz = 0, minX = w, maxX = -1, minY = h, maxY = -1;
+        while (stack.length) {
+          const p = stack.pop(); sz++;
+          const px = p % w, py = (p / w) | 0;
+          if (px < minX) minX = px; if (px > maxX) maxX = px;
+          if (py < minY) minY = py; if (py > maxY) maxY = py;
+          const tryq = (q) => { if (alpha[q] >= 100 && comp[q] < 0) { comp[q] = next; stack.push(q); } };
+          if (py > 0) tryq(p - w);
+          if (py < h - 1) tryq(p + w);
+          if (px > 0) tryq(p - 1);
+          if (px < w - 1) tryq(p + 1);
+        }
+        sizes.push({ sz, minX, maxX, minY, maxY });
+        next++;
+      }
+      if (next === 0) return c;
+      const main = sizes[comp[topPix]];
+      const keep = new Uint8Array(n);
+      for (let i = 0; i < n; i++) keep[i] = 1;
+      for (let ci = 0; ci < next; ci++) {
+        const s = sizes[ci];
+        if (ci === comp[topPix]) continue;
+        const overlap = s.minX <= main.maxX && s.maxX >= main.minX && s.minY <= main.maxY && s.maxY >= main.minY;
+        if (overlap || s.sz > maxArea) continue;
+        // 小块且颜色接近背景色簇才删除
+        let close = 0, tot = 0;
+        for (let i = 0; i < n; i++) {
+          if (comp[i] !== ci) continue;
+          const r = data[i*4], g = data[i*4+1], b = data[i*4+2];
+          tot++;
+          for (let k = 0; k < K; k++) {
+            if (Math.abs(r-cents[k][0]) + Math.abs(g-cents[k][1]) + Math.abs(b-cents[k][2]) <= tol) { close++; break; }
+          }
+        }
+        if (tot > 0 && close / tot >= 0.6) {
+          for (let i = 0; i < n; i++) if (comp[i] === ci) keep[i] = 0;
+        }
+      }
+      const img2 = ctx.getImageData(0, 0, w, h);
+      for (let i = 0; i < n; i++) {
+        if (!keep[i]) img2.data[i * 4 + 3] = 0;
+      }
+      ctx.putImageData(img2, 0, 0);
+      return c;
+    }
+
+
+    // v4.4：平滑收缩边缘（alpha 等位腐蚀，保留抗锯齿渐变）。
+    // 旧版 1px 二值腐蚀会把边缘切成 0/255 硬台阶，复杂背景抠图后锯齿明显；
+    // 等位腐蚀按 alpha 值整体下压，边缘保持平滑过渡，毛边和色边都能压掉。
+    function shrinkAlphaSmooth(canvas, amt) {
+      const c = cloneCanvas(canvas);
+      const ctx = c.getContext('2d');
+      const img = ctx.getImageData(0, 0, c.width, c.height);
+      const d = img.data;
+      const scale = 255 / Math.max(1, 255 - amt);
+      for (let i = 3; i < d.length; i += 4) {
+        const a = d[i];
+        d[i] = a <= amt ? 0 : (a - amt) * scale;
+      }
+      ctx.putImageData(img, 0, 0);
+      return c;
+    }
+    function shrinkEdgeOnce(canvas) {
+      // 约 1px 的平滑收缩（上传后默认去毛边，不产生锯齿）
+      return shrinkAlphaSmooth(canvas, 110);
+    }
+
+function applyPostProcessing(rawCanvas) {
+      // v9：默认不再执行激进背景清除（v8 会误删浅色裤腿/衣物，产生“斑点”）。
+      // 勾选“自动清除背景残留”时才执行保守版：只删贴边的小碎块背景，不碰大面积衣物。
+      let c = S.autoCleanBg ? removeBackdropFlood(cloneCanvas(rawCanvas)) : cloneCanvas(rawCanvas);
+      // v4.2：默认自动收缩边缘 1px，上传后即为干净边缘，无需手动点"收缩边缘"
+      c = shrinkEdgeOnce(c);
+      c = smoothMask(c, S.shrink || 0);
+      c = smoothMask(c, S.shrink || 0);
+      c = cleanupAiMask(c);
+      const fb = findAlphaBounds(c);
+      if (!fb) {
+        // 兜底：背景清除误删人物时，退回不带背景清除的结果
+        c = shrinkEdgeOnce(cloneCanvas(rawCanvas));
+        c = smoothMask(c, S.shrink || 0);
+        c = cleanupAiMask(c);
+        S.cutoutCanvas = c; S.maskCanvas = c; S.faceBox = findAlphaBounds(c);
+        return c;
+      }
+      S.cutoutCanvas = c; S.maskCanvas = c; S.faceBox = fb;
+      return c;
+    }
+
+    // 基于缓存的原始蒙版快速重新处理（不重跑模型）
+    function refineFromRaw() {
+      if (!S.rawMask) return;
+      applyPostProcessing(S.rawMask);
+      renderAll();
+      setStatus('已重新抠图（快速重处理完成）。');
+    }
+
+    // 蒙版清理：去背景斑点 + 修头部光圈 + 填充发丝空洞 + 保留发丝半透明
+    function fillInteriorHoles(bin, w, h) {
+      const n = w * h;
+      const outside = new Uint8Array(n);
+      const stack = [];
+      // 从图像四边 flood fill 背景（bin=0），未被访问到的背景 = 内部空洞
+      for (let x = 0; x < w; x++) {
+        const t1 = x, t2 = (h - 1) * w + x;
+        if (!bin[t1] && !outside[t1]) { outside[t1] = 1; stack.push(t1); }
+        if (!bin[t2] && !outside[t2]) { outside[t2] = 1; stack.push(t2); }
+      }
+      for (let y = 0; y < h; y++) {
+        const l1 = y * w, l2 = y * w + (w - 1);
+        if (!bin[l1] && !outside[l1]) { outside[l1] = 1; stack.push(l1); }
+        if (!bin[l2] && !outside[l2]) { outside[l2] = 1; stack.push(l2); }
+      }
+      while (stack.length) {
+        const p = stack.pop();
+        const x = p % w, y = (p / w) | 0;
+        if (y > 0) { const q = p - w; if (!bin[q] && !outside[q]) { outside[q] = 1; stack.push(q); } }
+        if (y < h - 1) { const q = p + w; if (!bin[q] && !outside[q]) { outside[q] = 1; stack.push(q); } }
+        if (x > 0) { const q = p - 1; if (!bin[q] && !outside[q]) { outside[q] = 1; stack.push(q); } }
+        if (x < w - 1) { const q = p + 1; if (!bin[q] && !outside[q]) { outside[q] = 1; stack.push(q); } }
+      }
+      const filled = new Uint8Array(n);
+      for (let i = 0; i < n; i++) filled[i] = (bin[i] || !outside[i]) ? 1 : 0;
+      return filled;
+    }
+    // 填充"正交封闭"区域：背景像素四周（上/下/左/右）都存在前景时视为人物内部
+    // （例：格纹衣服的浅色格被模型误判为背景并连成片，蓝底上透出背景色成"网洞"）
+    function fillOrthogonalHoles(bin, w, h) {
+      const n = w * h;
+      const rowL = new Int32Array(h);
+      const rowR = new Int32Array(h);
+      const colT = new Int32Array(w);
+      const colB = new Int32Array(w);
+      rowL.fill(-1); rowR.fill(-1); colT.fill(-1); colB.fill(-1);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          if (bin[y * w + x]) {
+            if (rowL[y] === -1) rowL[y] = x;
+            rowR[y] = x;
+          }
+        }
+      }
+      for (let x = 0; x < w; x++) {
+        for (let y = 0; y < h; y++) {
+          if (bin[y * w + x]) {
+            if (colT[x] === -1) colT[x] = y;
+            colB[x] = y;
+          }
+        }
+      }
+      const filled = new Uint8Array(n);
+      for (let i = 0; i < n; i++) filled[i] = bin[i];
+      for (let y = 0; y < h; y++) {
+        if (rowL[y] === -1) continue;
+        for (let x = rowL[y] + 1; x < rowR[y]; x++) {
+          const i = y * w + x;
+          if (!filled[i] && colT[x] !== -1 && y > colT[x] && y < colB[x]) filled[i] = 1;
+        }
+      }
+      return filled;
+    }
+
+
+    // 修复空洞颜色：从洞边界向中心传播周围真实像素的颜色
+    function inpaintHoleColors(data, w, h, filled, holes) {
+      const n = w * h;
+      const done = new Uint8Array(n);
+      const queue = [];
+      for (let i = 0; i < n; i++) {
+        if (!holes[i]) continue;
+        const x = i % w, y = (i / w) | 0;
+        let r = 0, g = 0, b = 0, cnt = 0;
+        if (y > 0) { const j = i - w; if (filled[j] && !holes[j]) { r += data[j * 4]; g += data[j * 4 + 1]; b += data[j * 4 + 2]; cnt++; } }
+        if (y < h - 1) { const j = i + w; if (filled[j] && !holes[j]) { r += data[j * 4]; g += data[j * 4 + 1]; b += data[j * 4 + 2]; cnt++; } }
+        if (x > 0) { const j = i - 1; if (filled[j] && !holes[j]) { r += data[j * 4]; g += data[j * 4 + 1]; b += data[j * 4 + 2]; cnt++; } }
+        if (x < w - 1) { const j = i + 1; if (filled[j] && !holes[j]) { r += data[j * 4]; g += data[j * 4 + 1]; b += data[j * 4 + 2]; cnt++; } }
+        if (cnt > 0) {
+          data[i * 4] = r / cnt; data[i * 4 + 1] = g / cnt; data[i * 4 + 2] = b / cnt;
+          done[i] = 1; queue.push(i);
+        }
+      }
+      let head = 0;
+      while (head < queue.length) {
+        const p = queue[head++];
+        const x = p % w, y = (p / w) | 0;
+        const nb = [];
+        if (y > 0) nb.push(p - w);
+        if (y < h - 1) nb.push(p + w);
+        if (x > 0) nb.push(p - 1);
+        if (x < w - 1) nb.push(p + 1);
+        for (const j of nb) {
+          if (!holes[j] || done[j]) continue;
+          data[j * 4] = data[p * 4]; data[j * 4 + 1] = data[p * 4 + 1]; data[j * 4 + 2] = data[p * 4 + 2];
+          done[j] = 1; queue.push(j);
+        }
+      }
+    }
+
+    function smoothMask(canvas, extraErode) {
+      const c = cloneCanvas(canvas);
+      const ctx = c.getContext('2d');
+      const img = ctx.getImageData(0, 0, c.width, c.height);
+      const w = c.width, h = c.height;
+      const n = w * h;
+      const data = img.data;
+      const alpha = new Uint8Array(n);
+      for (let i = 0; i < n; i++) alpha[i] = data[i * 4 + 3];
+
+      // 低阈值二值化：阈值 18，尽量保留细发丝（发丝缝隙不再被误删）
+      const bin = new Uint8Array(n);
+      for (let i = 0; i < n; i++) bin[i] = alpha[i] >= 18 ? 1 : 0;
+
+      // 开运算（先腐蚀后膨胀）去除孤立噪点
+      const opened = dilateMask(erodeMask(bin, w, h, 1), w, h, 1);
+
+      // 再腐蚀1px：裁掉头部/身体外沿的背景色光圈
+      const core = erodeMask(opened, w, h, 1 + (extraErode || 0));
+
+      // 主体外围1px过渡带，用于柔化边缘
+      const band = dilateMask(core, w, h, 1);
+
+      // 只保留最大主体（含过渡带），其余残留全部清除
+      const keep = keepLargestComponent(band, w, h);
+
+      // 填充主体内部空洞（发丝缝隙、小缺口），避免背景色透出成斑点
+      const filled = fillOrthogonalHoles(keep, w, h);
+      const holePix = new Uint8Array(n);
+      for (let i = 0; i < n; i++) holePix[i] = (filled[i] && !keep[i]) ? 1 : 0;
+
+      // 空洞颜色修复：用周围真实像素颜色填充，避免出现背景色色块
+      inpaintHoleColors(data, w, h, filled, holePix);
+
+      // 写回：主体内保留原始半透明（发丝），填充洞不透明，过渡带按原alpha渐变，外部全透明。
+      // v4.4：不再用 150/90 两级硬台阶（那是毛边锯齿的来源），改为平滑渐变。
+      for (let i = 0; i < n; i++) {
+        if (filled[i]) {
+          if (holePix[i]) {
+            data[i * 4 + 3] = 255;
+          } else if (core[i]) {
+            data[i * 4 + 3] = Math.max(alpha[i], 90);
+          } else {
+            data[i * 4 + 3] = Math.round(alpha[i] * 0.6);
+          }
+        } else {
+          data[i * 4 + 3] = 0;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      return c;
+    }
+    // 边缘去色边（defringe）：从轮廓逐层向内推进，把浅色/背景色边缘替换为内层真实颜色
+    // 12 层深度可覆盖发丝半透明带，消除头部光圈
+    function cleanupAiMask(canvas) {
+      const c = cloneCanvas(canvas);
+      const ctx = c.getContext('2d');
+      const img = ctx.getImageData(0, 0, c.width, c.height);
+      const w = c.width, h = c.height;
+      const data = img.data;
+      const n = w * h;
+
+      const alpha = new Uint8Array(n);
+      for (let i = 0; i < n; i++) alpha[i] = data[i * 4 + 3];
+
+      // 初始边界层：不透明像素且4邻域存在低alpha像素（过渡带及其内层）
+      const done = new Uint8Array(n);
+      const edge = new Uint8Array(n);
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const i = y * w + x;
+          if (alpha[i] === 0) continue;
+          if (alpha[i - 1] < 150 || alpha[i + 1] < 150 ||
+              alpha[i - w] < 150 || alpha[i + w] < 150) {
+            edge[i] = 1;
+          }
+        }
+      }
+
+      // 逐层"剥洋葱"：每层像素用已着色/内层邻居的颜色替换，并向内推进一层
+      for (let pass = 0; pass < 12; pass++) {
+        const next = new Uint8Array(n);
+        let processed = 0;
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const i = y * w + x;
+            if (!edge[i] || done[i]) continue;
+            let r = 0, g = 0, b = 0, cnt = 0;
+            const nb = [i - 1, i + 1, i - w, i + w];
+            for (const j of nb) {
+              if (data[j * 4 + 3] === 0) continue;
+              if (done[j] || !edge[j]) { r += data[j * 4]; g += data[j * 4 + 1]; b += data[j * 4 + 2]; cnt++; }
+            }
+            if (cnt > 0) {
+              data[i * 4] = r / cnt; data[i * 4 + 1] = g / cnt; data[i * 4 + 2] = b / cnt;
+              done[i] = 1; processed++;
+              for (const j of nb) {
+                if (!edge[j] && !done[j] && data[j * 4 + 3] >= 150) next[j] = 1;
+              }
+            } else {
+              next[i] = 1;
+            }
+          }
+        }
+        edge.set(next);
+        if (processed === 0) break;
+      }
+
+      ctx.putImageData(img, 0, 0);
+      return c;
+    }
+
+    
+
+
+    function findAlphaBounds(canvas) {
+      const { width: w, height: h } = canvas;
+      const data = canvas.getContext('2d').getImageData(0, 0, w, h).data;
+      let mix = w, miy = h, mxx = -1, mxy = -1;
+      for (let y = 0; y < h; y += 2) {
+        for (let x = 0; x < w; x += 2) {
+          if (data[(y * w + x) * 4 + 3] > 24) {
+            mix = Math.min(mix, x); miy = Math.min(miy, y);
+            mxx = Math.max(mxx, x); mxy = Math.max(mxy, y);
+          }
+        }
+      }
+      if (mix > mxx) {
+        mix = w * 0.1; mxx = w * 0.9;
+        miy = h * 0.1; mxy = h * 0.9;
+      }
+      return { x: mix, y: miy, w: mxx - mix, h: mxy - miy };
+    }
+
+    function resetPlacement() {
+      const b = S.faceBox || { x: 0, y: 0, w: S.imgCanvas.width, h: S.imgCanvas.height };
+      const targetW = S.size.w * 0.72;
+      const targetH = S.size.h * 0.78;
+      S.scale = Math.min(targetW / b.w, targetH / b.h);
+      const scaledHeadTop = b.y * S.scale;
+      const scaledPersonCenter = (b.x + b.w / 2) * S.scale;
+      S.offsetX = S.size.w / 2 - scaledPersonCenter;
+      S.offsetY = S.size.h * 0.1 - scaledHeadTop;
+      clampPlacement();
+    }
+
+    function clampPlacement() {
+      if (!S.imgCanvas) return;
+      const w = S.imgCanvas.width * S.scale;
+      const h = S.imgCanvas.height * S.scale;
+      if (w > S.size.w) S.offsetX = Math.min(0, Math.max(S.size.w - w, S.offsetX));
+      else S.offsetX = Math.min(S.size.w - w, Math.max(0, S.offsetX));
+      if (h > S.size.h) S.offsetY = Math.min(0, Math.max(S.size.h - h, S.offsetY));
+      else S.offsetY = Math.min(S.size.h - h, Math.max(0, S.offsetY));
+    }
+
+    function renderAll() {
+      try {
+        if (!S.imgCanvas || !S.cutoutCanvas) {
+          drawEmpty();
+          return;
+        }
+        const beautified = applyBeautyPipeline(S.cutoutCanvas);
+        S.beautyCanvas = beautified;
+        const final = document.createElement('canvas');
+        final.width = S.size.w;
+        final.height = S.size.h;
+        const ctx = final.getContext('2d');
+        paintBackground(ctx, final.width, final.height);
+        ctx.drawImage(beautified, S.offsetX, S.offsetY, S.imgCanvas.width * S.scale, S.imgCanvas.height * S.scale);
+        drawOutfitOverlay(ctx, final.width, final.height);
+        drawCropGuide(ctx, final.width, final.height);
+        S.finalCanvas = final;
+        previewCanvas.width = S.size.w;
+        previewCanvas.height = S.size.h;
+        pctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        pctx.drawImage(final, 0, 0);
+        if (S.brushMode) drawBrushRing();
+        makeLayout(false);
+      } catch (err) {
+        console.error('renderAll 出错：', err);
+        setStatus('生成预览失败：' + (err && err.message ? err.message : '未知错误'));
+      }
+    }
+
+    function paintBackground(ctx, w, h) {
+      if (S.background.type === 'gradient') {
+        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, '#6bafef');
+        grad.addColorStop(1, '#2a7fd4');
+        ctx.fillStyle = grad;
+      } else {
+        ctx.fillStyle = S.background.color;
+      }
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    function drawCropGuide(ctx, w, h) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,.82)';
+      ctx.setLineDash([8, 7]);
+      ctx.lineWidth = Math.max(1, Math.round(w / 180));
+      ctx.strokeRect(ctx.lineWidth, ctx.lineWidth, w - ctx.lineWidth * 2, h - ctx.lineWidth * 2);
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#4a90d9';
+      ctx.lineWidth = Math.max(3, Math.round(w / 90));
+      const l = Math.round(Math.min(w, h) * 0.11);
+      [[0,0,1,1],[w,0,-1,1],[0,h,1,-1],[w,h,-1,-1]].forEach(([x,y,sx,sy]) => {
+        ctx.beginPath();
+        ctx.moveTo(x, y + sy * l);
+        ctx.lineTo(x, y);
+        ctx.lineTo(x + sx * l, y);
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    function applyBeautyPipeline(src) {
+      let c = cloneCanvas(src);
+      const smooth = +$('smooth').value / 100;
+      const whiten = +$('whiten').value;
+      const eyes = +$('eyes').value;
+      const slim = +$('slim').value / 100;
+      if (smooth > 0) c = smoothSkin(c, smooth);
+      if (whiten > 0) c = whitenSkin(c, whiten);
+      if (eyes > 0) c = brightenEyes(c, eyes);
+      if (slim > 0) c = slimFace(c, slim);
+      return c;
+    }
+
+    function isSkin(r, g, b, a = 255) {
+      return a > 20 && r > 95 && g > 40 && b > 20 && r > g && r > b && Math.abs(r - g) > 15 && Math.max(r, g, b) - Math.min(r, g, b) > 15;
+    }
+
+    function smoothSkin(canvas, strength) {
+      const small = document.createElement('canvas');
+      small.width = Math.max(1, Math.round(canvas.width / 4));
+      small.height = Math.max(1, Math.round(canvas.height / 4));
+      const sctx = small.getContext('2d');
+      sctx.drawImage(canvas, 0, 0, small.width, small.height);
+      boxBlur(sctx, small.width, small.height, 2);
+      const c = cloneCanvas(canvas);
+      const ctx = c.getContext('2d');
+      const img = ctx.getImageData(0, 0, c.width, c.height);
+      const bctx = document.createElement('canvas').getContext('2d');
+      bctx.canvas.width = c.width; bctx.canvas.height = c.height;
+      bctx.drawImage(small, 0, 0, c.width, c.height);
+      const blur = bctx.getImageData(0, 0, c.width, c.height).data;
+      for (let i = 0; i < img.data.length; i += 4) {
+        if (isSkin(img.data[i], img.data[i + 1], img.data[i + 2], img.data[i + 3])) {
+          img.data[i] = img.data[i] * (1 - strength) + blur[i] * strength;
+          img.data[i + 1] = img.data[i + 1] * (1 - strength) + blur[i + 1] * strength;
+          img.data[i + 2] = img.data[i + 2] * (1 - strength) + blur[i + 2] * strength;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      return c;
+    }
+
+    function boxBlur(ctx, w, h, passes) {
+      for (let p = 0; p < passes; p++) {
+        const img = ctx.getImageData(0, 0, w, h);
+        const src = new Uint8ClampedArray(img.data);
+        for (let y = 2; y < h - 2; y++) {
+          for (let x = 2; x < w - 2; x++) {
+            const i = (y * w + x) * 4;
+            for (let c = 0; c < 3; c++) {
+              let sum = 0;
+              for (let yy = -2; yy <= 2; yy++) for (let xx = -2; xx <= 2; xx++) sum += src[((y + yy) * w + x + xx) * 4 + c];
+              img.data[i + c] = sum / 25;
+            }
+          }
+        }
+        ctx.putImageData(img, 0, 0);
+      }
+    }
+
+    function whitenSkin(canvas, amount) {
+      const c = cloneCanvas(canvas);
+      const ctx = c.getContext('2d');
+      const img = ctx.getImageData(0, 0, c.width, c.height);
+      for (let i = 0; i < img.data.length; i += 4) {
+        if (isSkin(img.data[i], img.data[i + 1], img.data[i + 2], img.data[i + 3])) {
+          img.data[i] = Math.min(255, img.data[i] + amount * 0.6);
+          img.data[i + 1] = Math.min(255, img.data[i + 1] + amount * 0.3);
+          img.data[i + 2] = Math.min(255, img.data[i + 2] + amount * 0.2);
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      return c;
+    }
+
+    function brightenEyes(canvas, amount) {
+      const c = cloneCanvas(canvas);
+      const b = findAlphaBounds(c);
+      const ctx = c.getContext('2d');
+      const img = ctx.getImageData(0, 0, c.width, c.height);
+      const zones = findDarkEyeZones(img, c.width, c.height, b);
+      const gamma = Math.max(0.25, 1 - amount * 0.01);
+      zones.forEach(z => {
+        for (let y = Math.max(0, z.y - 8); y < Math.min(c.height, z.y + 8); y++) {
+          for (let x = Math.max(0, z.x - 11); x < Math.min(c.width, z.x + 11); x++) {
+            const i = (y * c.width + x) * 4;
+            if (img.data[i + 3] < 20) continue;
+            for (let k = 0; k < 3; k++) img.data[i + k] = Math.pow(img.data[i + k] / 255, gamma) * 255;
+          }
+        }
+      });
+      ctx.putImageData(img, 0, 0);
+      return c;
+    }
+
+    function findDarkEyeZones(img, w, h, personBox) {
+      const face = estimateSkinFaceBox(img, w, h, personBox);
+      const mid = face.x + face.w / 2;
+      const eyeTop = Math.round(face.y + face.h * 0.28);
+      const eyeBottom = Math.round(face.y + face.h * 0.56);
+      const expected = [
+        { x: face.x + face.w * 0.34, y: face.y + face.h * 0.42 },
+        { x: face.x + face.w * 0.66, y: face.y + face.h * 0.42 }
+      ];
+      const picks = expected.map(p => ({ score: 9999, x: p.x, y: p.y }));
+      for (let y = eyeTop; y < eyeBottom; y += 2) {
+        for (let x = Math.round(face.x + face.w * 0.18); x < Math.round(face.x + face.w * 0.82); x += 2) {
+          const i = (y * w + x) * 4;
+          if (img.data[i + 3] < 20) continue;
+          const lum = img.data[i] * .299 + img.data[i + 1] * .587 + img.data[i + 2] * .114;
+          const side = x < mid ? 0 : 1;
+          const dx = (x - expected[side].x) / Math.max(1, face.w);
+          const dy = (y - expected[side].y) / Math.max(1, face.h);
+          const score = lum + (dx * dx + dy * dy) * 520;
+          if (score < picks[side].score) picks[side] = { score, x, y };
+        }
+      }
+      return picks;
+    }
+
+    function estimateSkinFaceBox(img, w, h, personBox) {
+      let mix = w, miy = h, mxx = -1, mxy = -1;
+      const yLimit = Math.min(h, Math.round(personBox.y + personBox.h * 0.72));
+      for (let y = Math.max(0, Math.round(personBox.y)); y < yLimit; y += 2) {
+        for (let x = Math.max(0, Math.round(personBox.x)); x < Math.min(w, Math.round(personBox.x + personBox.w)); x += 2) {
+          const i = (y * w + x) * 4;
+          if (isSkin(img.data[i], img.data[i + 1], img.data[i + 2], img.data[i + 3])) {
+            mix = Math.min(mix, x); miy = Math.min(miy, y);
+            mxx = Math.max(mxx, x); mxy = Math.max(mxy, y);
+          }
+        }
+      }
+      if (mix <= mxx && mxy - miy > personBox.h * 0.16) {
+        const padX = (mxx - mix) * 0.12;
+        const padY = (mxy - miy) * 0.08;
+        return {
+          x: Math.max(0, mix - padX),
+          y: Math.max(0, miy - padY),
+          w: Math.min(w, mxx + padX) - Math.max(0, mix - padX),
+          h: Math.min(h, mxy + padY) - Math.max(0, miy - padY)
+        };
+      }
+      return {
+        x: personBox.x + personBox.w * 0.18,
+        y: personBox.y + personBox.h * 0.16,
+        w: personBox.w * 0.64,
+        h: personBox.h * 0.45
+      };
+    }
+
+    function slimFace(canvas, strength) {
+      const c = document.createElement('canvas');
+      c.width = canvas.width; c.height = canvas.height;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(canvas, 0, 0);
+      const src = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      const dst = ctx.getImageData(0, 0, c.width, c.height);
+      const person = findAlphaBounds(canvas);
+      const face = estimateSkinFaceBox(src, canvas.width, canvas.height, person);
+      const cx = face.x + face.w / 2;
+      const top = Math.round(face.y + face.h * 0.38);
+      const bottom = Math.round(face.y + face.h * 0.86);
+      const rx = Math.max(18, face.w * 0.46);
+      const ry = Math.max(22, face.h * 0.32);
+      const cy = face.y + face.h * 0.63;
+      for (let y = Math.max(0, top); y < Math.min(c.height, bottom); y++) {
+        for (let x = Math.max(0, Math.round(cx - rx)); x < Math.min(c.width, Math.round(cx + rx)); x++) {
+          const nx = (x - cx) / rx;
+          const ny = (y - cy) / ry;
+          const d = nx * nx + ny * ny;
+          if (d > 1 || Math.abs(nx) < 0.18) continue;
+          const i = (y * c.width + x) * 4;
+          if (src.data[i + 3] < 20) continue;
+          const falloff = (1 - d) * Math.min(1, Math.abs(nx) * 1.8);
+          const direction = x < cx ? -1 : 1;
+          const sx = Math.max(0, Math.min(c.width - 1, Math.round(x + direction * Math.abs(x - cx) * strength * 0.22 * falloff)));
+          const si = (y * c.width + sx) * 4;
+          dst.data[i] = src.data[si];
+          dst.data[i + 1] = src.data[si + 1];
+          dst.data[i + 2] = src.data[si + 2];
+          dst.data[i + 3] = src.data[si + 3];
+        }
+      }
+      ctx.putImageData(dst, 0, 0);
+      return c;
+    }
+
+    function paintMask(px, py) {
+      if (!S.maskCanvas) return;
+      const ix = (px - S.offsetX) / S.scale;
+      const iy = (py - S.offsetY) / S.scale;
+      const r = S.brushSize / S.scale;
+      const ctx = S.maskCanvas.getContext('2d');
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ix, iy, r, 0, Math.PI * 2);
+      ctx.clip();
+      if (S.brushMode === 'erase') {
+        ctx.clearRect(ix - r, iy - r, r * 2, r * 2);
+      } else {
+        const temp = document.createElement('canvas');
+        temp.width = S.imgCanvas.width; temp.height = S.imgCanvas.height;
+        temp.getContext('2d').putImageData(S.originalData, 0, 0);
+        ctx.drawImage(temp, ix - r, iy - r, r * 2, r * 2, ix - r, iy - r, r * 2, r * 2);
+      }
+      ctx.restore();
+      S.cutoutCanvas = S.maskCanvas;
+      S.faceBox = findAlphaBounds(S.maskCanvas);
+      renderAll();
+    }
+
+    function drawBrushRing() {
+      pctx.save();
+      pctx.strokeStyle = '#ff3366';
+      pctx.lineWidth = 2;
+      pctx.setLineDash([3, 3]);
+      pctx.beginPath();
+      pctx.arc(S.brushX, S.brushY, S.brushSize, 0, Math.PI * 2);
+      pctx.stroke();
+      // 小十字准心
+      pctx.strokeStyle = '#fff';
+      pctx.lineWidth = 1;
+      pctx.setLineDash([]);
+      pctx.beginPath();
+      pctx.moveTo(S.brushX - 4, S.brushY);
+      pctx.lineTo(S.brushX + 4, S.brushY);
+      pctx.moveTo(S.brushX, S.brushY - 4);
+      pctx.lineTo(S.brushX, S.brushY + 4);
+      pctx.stroke();
+      pctx.restore();
+    }
+
+    function makeLayout(updateStatus) {
+      if (!S.finalCanvas) {
+        lctx.clearRect(0, 0, layoutCanvas.width, layoutCanvas.height);
+        return;
+      }
+      const paper = papers[$('paperSelect').value];
+      const gap = 24;
+      const cols = Math.max(1, Math.floor((paper.w + gap) / (S.size.w + gap)));
+      const rows = Math.max(1, Math.floor((paper.h + gap) / (S.size.h + gap)));
+      const count = cols * rows;
+      const c = document.createElement('canvas');
+      c.width = paper.w; c.height = paper.h;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      const totalW = cols * S.size.w + (cols - 1) * gap;
+      const totalH = rows * S.size.h + (rows - 1) * gap;
+      const startX = Math.round((paper.w - totalW) / 2);
+      const startY = Math.round((paper.h - totalH) / 2);
+      for (let r = 0; r < rows; r++) {
+        for (let col = 0; col < cols; col++) {
+          const x = startX + col * (S.size.w + gap);
+          const y = startY + r * (S.size.h + gap);
+          ctx.drawImage(S.finalCanvas, x, y);
+          ctx.strokeStyle = '#d7dde7';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x + .5, y + .5, S.size.w - 1, S.size.h - 1);
+        }
+      }
+      S.layoutCanvas = c;
+      layoutCanvas.width = Math.round(paper.w / 4);
+      layoutCanvas.height = Math.round(paper.h / 4);
+      lctx.clearRect(0, 0, layoutCanvas.width, layoutCanvas.height);
+      lctx.drawImage(c, 0, 0, layoutCanvas.width, layoutCanvas.height);
+      $('layoutInfo').textContent = `${paper.name}可排 ${count} 张 ${S.size.name}，间距 2mm。`;
+      if (updateStatus) setStatus('排版图已生成，可保存 PNG。');
+    }
+
+    function drawEmpty() {
+      [originalCanvas, previewCanvas, layoutCanvas].forEach(c => {
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, c.width, c.height);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.fillStyle = '#8792a2';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '16px Microsoft YaHei, Arial';
+        ctx.fillText('等待上传照片', c.width / 2, c.height / 2);
+      });
+    }
+
+    function cloneCanvas(src) {
+      const c = document.createElement('canvas');
+      c.width = src.width; c.height = src.height;
+      c.getContext('2d').drawImage(src, 0, 0);
+      return c;
+    }
+
+    function saveBlob(blob, filename) {
+      // 窗口模式：优先用系统"另存为"对话框（网页下载在窗口引擎里不可用）
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.save_blob) {
+        setStatus('正在打开保存窗口…');
+        const reader = new FileReader();
+        reader.onload = function() {
+          window.pywebview.api.save_blob(reader.result, filename).then(function(res) {
+            if (typeof res === 'string' && res.indexOf('ok:') === 0) {
+              setStatus('已保存：' + res.slice(3));
+            } else if (res === 'cancelled') {
+              setStatus('已取消保存。');
+            } else {
+              setStatus('保存失败：' + res);
+            }
+          }).catch(function() { setStatus('保存失败：调用出错'); });
+        };
+        reader.onerror = function() { setStatus('错误：图片数据读取失败'); };
+        reader.readAsDataURL(blob);
+        return;
+      }
+      // 浏览器支持系统保存选择器时使用（Chrome/Edge）
+      if (window.showSaveFilePicker) {
+        (async function() {
+          try {
+            const handle = await window.showSaveFilePicker({
+              suggestedName: filename,
+              types: [{ description: '图片文件', accept: { 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'] } }]
+            });
+            const w = await handle.createWritable();
+            await w.write(blob);
+            await w.close();
+            setStatus('已保存：' + filename);
+          } catch (e) {
+            if (e && e.name === 'AbortError') { setStatus('已取消保存。'); }
+            else { setStatus('保存失败：' + (e && e.message || e)); }
+          }
+        })();
+        return;
+      }
+      // 最后兜底：网页下载方式
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.download = filename;
+      a.href = url;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setStatus('已开始下载：' + filename);
+      setTimeout(function() {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 200);
+    }
+
+    function downloadCanvas(canvas, filename) {
+      if (!canvas) { setStatus('错误：没有可保存的图片'); return; }
+      canvas.toBlob(function(blob) {
+        if (!blob) { setStatus('错误：图片生成失败'); return; }
+        saveBlob(blob, filename);
+      }, 'image/png');
+    }
+
+    function photoName(layout) {
+      const d = new Date();
+      const day = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+      if (layout) return `证件照排版_${S.size.name}_${S.background.label}_${papers[$('paperSelect').value].name}_${day}.png`;
+      return `证件照_${S.size.name}_${S.background.label}_${day}.png`;
+    }
+
+    function setStatus(text) {
+      $('status').textContent = text;
+    }
+
+    // ============ 正装换装 ============
+
+    // 服装图片对象缓存（init 时预加载）
+    const CLOTHING_CACHE = {};
+    const CLOTHING_FILES = {
+      'whiteShirt': 'clothing/whiteShirt.png',
+      'blueShirt':  'clothing/blueShirt.png',
+      'darkSuit':   'clothing/darkSuit.png',
+      'girlSuit':   'clothing/girlSuit.png',
+      'redDress':   'clothing/redDress.png',
+      'grayJacket': 'clothing/grayJacket.png',
+      'khakiJacket': 'clothing/khakiJacket.png',
+      'pinkDress':   'clothing/pinkDress.png'
+    };
+
+    function preloadClothing() {
+      Object.keys(CLOTHING_FILES).forEach(key => {
+        const img = new Image();
+        img.onload = () => { CLOTHING_CACHE[key] = img; if (window.renderAll) renderAll(); };
+        img.onerror = () => { console.warn('Clothing image failed:', key); };
+        img.src = CLOTHING_FILES[key];
+        CLOTHING_CACHE[key] = img;
+      });
+    }
+
+    function drawOutfitOverlay(ctx, finalW, finalH) {
+      if (!S.outfit || S.outfit.type === 'none') return;
+      const b = S.outfit;
+      const yShift = b.y * (finalH / 400);
+      const sizeFactor = b.scale / 100;
+
+      const img = CLOTHING_CACHE[b.type];
+      if (img && img.complete && img.naturalWidth > 0) {
+        // 真服装图片路径
+        const w = finalW * 0.95 * sizeFactor;
+        const h = w * (img.naturalHeight / img.naturalWidth);
+        const x = (finalW - w) / 2;
+        const y = finalH * 0.48 + yShift - h * 0.08;
+        ctx.drawImage(img, x, y, w, h);
+      } else {
+        // 矢量绘制兜底：PNG缺失时也立即可用
+        drawVectorOutfit(ctx, finalW, finalH, b.type, yShift, sizeFactor);
+      }
+    }
+
+    // 用Canvas矢量绘制正装（兜底方案，无需PNG资源）
+    function drawVectorOutfit(ctx, finalW, finalH, type, yShift, sizeFactor) {
+      const cx = finalW / 2;
+      const neckY = finalH * 0.52 + yShift;
+      const top = finalH * 0.55 + yShift;
+      const bottom = finalH * 0.98 + yShift;
+      const sw = finalW * 0.88 * sizeFactor;
+      const collarW = sw * 0.38;
+
+      if (type === 'darkSuit') {
+        drawSuit(ctx, cx, neckY, top, bottom, sw, collarW, '#2a2a2a');
+      } else if (type === 'femaleSuit') {
+        // 女款：肩略窄、领口V形、紫黑色调
+        drawFemaleSuit(ctx, cx, neckY, top, bottom, sw * 0.94, collarW * 0.95);
+      } else if (type === 'whiteShirt') {
+        drawShirtStyle(ctx, cx, neckY, top, bottom, sw, collarW, '#f5f5f5', '#ffffff');
+      } else if (type === 'blueShirt') {
+        drawShirtStyle(ctx, cx, neckY, top, bottom, sw, collarW, '#3a6fc0', '#4a80d0');
+      }
+    }
+
+    // 女款西装：V领、收腰、略窄
+    function drawFemaleSuit(ctx, cx, neckY, top, bottom, sw, collarW) {
+      const color = '#3a2b3d';
+      const grad = ctx.createLinearGradient(cx - sw / 2, top, cx + sw / 2, bottom);
+      grad.addColorStop(0, lightenColor(color, 0.2));
+      grad.addColorStop(0.6, color);
+      grad.addColorStop(1, darkenColor(color, 0.14));
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(cx - sw * 0.46, top);
+      ctx.lineTo(cx - sw * 0.40, bottom);
+      ctx.lineTo(cx + sw * 0.40, bottom);
+      ctx.lineTo(cx + sw * 0.46, top);
+      ctx.closePath();
+      ctx.fill();
+
+      // 白衬衫V领
+      ctx.fillStyle = '#f2f2f2';
+      ctx.beginPath();
+      ctx.moveTo(cx - collarW * 0.22, neckY - 2);
+      ctx.lineTo(cx, neckY + collarW * 0.55);
+      ctx.lineTo(cx + collarW * 0.22, neckY - 2);
+      ctx.closePath();
+      ctx.fill();
+
+      // 翻领（V形）
+      ctx.fillStyle = lightenColor(color, 0.28);
+      ctx.beginPath();
+      ctx.moveTo(cx - collarW * 0.32, neckY - 2);
+      ctx.lineTo(cx - collarW * 0.08, neckY + collarW * 0.42);
+      ctx.lineTo(cx - collarW * 0.30, top + collarW * 0.12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx + collarW * 0.32, neckY - 2);
+      ctx.lineTo(cx + collarW * 0.08, neckY + collarW * 0.42);
+      ctx.lineTo(cx + collarW * 0.30, top + collarW * 0.12);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawSuit(ctx, cx, neckY, top, bottom, sw, collarW, color, highlight) {
+      color = color || '#2c2c2c';
+      // 西装外套
+      const grad = ctx.createLinearGradient(cx - sw / 2, top, cx + sw / 2, bottom);
+      grad.addColorStop(0, lightenColor(color, 0.18));
+      grad.addColorStop(0.6, color);
+      grad.addColorStop(1, darkenColor(color, 0.12));
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(cx - sw * 0.48, top);
+      ctx.lineTo(cx - sw * 0.44, bottom);
+      ctx.lineTo(cx + sw * 0.44, bottom);
+      ctx.lineTo(cx + sw * 0.48, top);
+      ctx.closePath();
+      ctx.fill();
+
+      // 翻领
+      ctx.fillStyle = lightenColor(color, 0.3);
+      // 左翻领
+      ctx.beginPath();
+      ctx.moveTo(cx - collarW * 0.35, neckY - 2);
+      ctx.lineTo(cx - collarW * 0.08, neckY + collarW * 0.4);
+      ctx.lineTo(cx - collarW * 0.32, top + collarW * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      // 右翻领
+      ctx.beginPath();
+      ctx.moveTo(cx + collarW * 0.35, neckY - 2);
+      ctx.lineTo(cx + collarW * 0.08, neckY + collarW * 0.4);
+      ctx.lineTo(cx + collarW * 0.32, top + collarW * 0.1);
+      ctx.closePath();
+      ctx.fill();
+
+      // 白衬衫 + 领带
+      ctx.fillStyle = '#f0f0f0';
+      ctx.beginPath();
+      ctx.moveTo(cx - collarW * 0.22, neckY - 4);
+      ctx.lineTo(cx - collarW * 0.06, neckY + collarW * 0.65);
+      ctx.lineTo(cx + collarW * 0.06, neckY + collarW * 0.65);
+      ctx.lineTo(cx + collarW * 0.22, neckY - 4);
+      ctx.closePath();
+      ctx.fill();
+
+      // 领带
+      ctx.fillStyle = '#b8282f';
+      ctx.beginPath();
+      ctx.moveTo(cx, neckY - 6);
+      ctx.lineTo(cx + 3, neckY + collarW * 0.38);
+      ctx.lineTo(cx + 2, neckY + collarW * 0.65);
+      ctx.lineTo(cx - 2, neckY + collarW * 0.65);
+      ctx.lineTo(cx - 3, neckY + collarW * 0.38);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawShirtStyle(ctx, cx, neckY, top, bottom, sw, collarW, color, highlight) {
+      // 衬衫主体
+      color = color || '#f0f0f0';
+      highlight = highlight || '#ffffff';
+      ctx.fillStyle = color;
+      ctx.fillRect(cx - sw * 0.46, top, sw * 0.92, bottom - top);
+
+      // 衬衫纹理 - 细竖线
+      ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+      ctx.lineWidth = 0.5;
+      for (let x = cx - sw * 0.4; x < cx + sw * 0.4; x += 4) {
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+      }
+
+      // 翻领
+      ctx.fillStyle = highlight;
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = 1;
+      // 左侧领
+      ctx.beginPath();
+      ctx.moveTo(cx - collarW * 0.28, neckY - 2);
+      ctx.lineTo(cx - collarW * 0.06, neckY + collarW * 0.35);
+      ctx.lineTo(cx - collarW * 0.28, top + collarW * 0.08);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // 右侧领
+      ctx.beginPath();
+      ctx.moveTo(cx + collarW * 0.28, neckY - 2);
+      ctx.lineTo(cx + collarW * 0.06, neckY + collarW * 0.35);
+      ctx.lineTo(cx + collarW * 0.28, top + collarW * 0.08);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    function drawAcademyStyle(ctx, cx, neckY, top, bottom, sw) {
+      // 学院风开衫
+      const grad = ctx.createLinearGradient(0, top, 0, bottom);
+      grad.addColorStop(0, '#c0a080');
+      grad.addColorStop(1, '#a08060');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(cx - sw * 0.46, top);
+      ctx.lineTo(cx - sw * 0.42, bottom);
+      ctx.lineTo(cx + sw * 0.42, bottom);
+      ctx.lineTo(cx + sw * 0.46, top);
+      ctx.closePath();
+      ctx.fill();
+
+      // 白色内搭
+      ctx.fillStyle = '#fafafa';
+      ctx.beginPath();
+      ctx.moveTo(cx - sw * 0.1, neckY - 2);
+      ctx.lineTo(cx - sw * 0.06, neckY + sw * 0.2);
+      ctx.lineTo(cx + sw * 0.06, neckY + sw * 0.2);
+      ctx.lineTo(cx + sw * 0.1, neckY - 2);
+      ctx.closePath();
+      ctx.fill();
+
+      // 纽扣线
+      ctx.strokeStyle = '#5a3a1a';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 4; i++) {
+        const y = neckY + sw * 0.1 + i * sw * 0.065;
+        ctx.beginPath();
+        ctx.arc(cx, y, sw * 0.015, 0, Math.PI * 2);
+        ctx.fillStyle = '#5a3a1a';
+        ctx.fill();
+      }
+    }
+
+    function lightenColor(hex, amount) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgb(${Math.min(255, r + (255 - r) * amount)},${Math.min(255, g + (255 - g) * amount)},${Math.min(255, b + (255 - b) * amount)})`;
+    }
+
+    function darkenColor(hex, amount) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgb(${Math.max(0, r * (1 - amount))},${Math.max(0, g * (1 - amount))},${Math.max(0, b * (1 - amount))})`;
+    }
+
+    // ============ 报名压缩 ============
+    function compressAndSave() {
+      if (!S.finalCanvas) { setStatus('请先上传照片并生成证件照。'); return; }
+
+      const kbSelect = $('kbSelect').value;
+      let targetKB = kbSelect === 'custom' ? (+$('customKb').value || 50) : +kbSelect;
+      targetKB = Math.max(10, Math.min(1000, targetKB));
+
+      setStatus(`正在压缩到 ${targetKB}KB...`);
+
+      // 降低分辨率以帮助压缩
+      let maxDim = 1200;
+      if (targetKB <= 20) maxDim = 600;
+      else if (targetKB <= 50) maxDim = 800;
+      else if (targetKB <= 100) maxDim = 1000;
+
+      let srcC = S.finalCanvas;
+      if (srcC.width > maxDim || srcC.height > maxDim) {
+        const sc = maxDim / Math.max(srcC.width, srcC.height);
+        srcC = document.createElement('canvas');
+        srcC.width = Math.round(S.finalCanvas.width * sc);
+        srcC.height = Math.round(S.finalCanvas.height * sc);
+        srcC.getContext('2d').drawImage(S.finalCanvas, 0, 0, srcC.width, srcC.height);
+      }
+
+      const filename = `证件照_${S.size.name}_${S.background.label}_${targetKB}KB.jpg`;
+
+      // 用 toBlob 替代 toDataURL，不用 base64，大图也能下
+      function tryQuality(q, cb) {
+        srcC.toBlob(function(b) { cb(b); }, 'image/jpeg', q);
+      }
+
+      // 先试两个极端质量，估算参数范围
+      tryQuality(0.95, function(hiBlob) {
+        const hiKB = (hiBlob && hiBlob.size || 0) / 1024;
+        tryQuality(0.05, function(loBlob) {
+          const loKB = (loBlob && loBlob.size || 0) / 1024;
+          if (hiKB <= 0 && loKB <= 0) { setStatus('压缩失败：无法生成图片'); return; }
+
+          let loQ = 0.05, hiQ = 0.95;
+          let bestBlob = loBlob, bestKB = loKB;
+
+          function bisect(iter) {
+            if (iter > 12 || hiQ - loQ < 0.005 || (bestKB > 0 && Math.abs(bestKB - targetKB) < targetKB * 0.05)) {
+              // 完成
+              downloadBlob(bestBlob || loBlob, filename);
+              $('compressInfo').textContent = `压缩后大小: ${(bestKB).toFixed(1)}KB (目标 ${targetKB}KB)`;
+              setStatus(`已保存 JPEG，${(bestKB).toFixed(1)}KB。`);
+              return;
+            }
+            const midQ = (loQ + hiQ) / 2;
+            tryQuality(midQ, function(midBlob) {
+              if (!midBlob) { downloadBlob(bestBlob || loBlob, filename); return; }
+              const midKB = midBlob.size / 1024;
+              if (midKB <= targetKB) {
+                loQ = midQ;
+                bestBlob = midBlob;
+                bestKB = midKB;
+              } else {
+                hiQ = midQ;
+              }
+              bisect(iter + 1);
+            });
+          }
+          bisect(0);
+        });
+      });
+    }
+
+    function downloadBlob(blob, filename) {
+      if (!blob) { setStatus('错误：压缩数据为空'); return; }
+      saveBlob(blob, filename);
+    }
+
+    // ============ 边缘优化 ============
+    function applyEdgeShrink() {
+      if (!S.maskCanvas) return;
+      // 平滑 alpha 腐蚀，强度可调（1轻/2标准/3强），保留抗锯齿、不啃内部
+      const amtMap = { 1: 90, 2: 140, 3: 200 };
+      const amt = amtMap[S.edgeShrink] || 110;
+      let c = shrinkAlphaSmooth(S.maskCanvas, amt);
+      // 收缩后重新走标准后处理：自动补洞、修复颜色、去色边，不再产生斑点
+      c = smoothMask(c);
+      c = cleanupAiMask(c);
+      S.cutoutCanvas = c;
+      S.maskCanvas = c;
+      S.faceBox = findAlphaBounds(c);
+      renderAll();
+      setStatus('已执行边缘收缩（强度' + (S.edgeShrink || 1) + '）。');
+    }
+
+function applyEdgeFeather() {
+      if (!S.maskCanvas) return;
+      const c = cloneCanvas(S.maskCanvas);
+      const ctx = c.getContext('2d');
+      const img = ctx.getImageData(0, 0, c.width, c.height);
+      const src = new Uint8ClampedArray(img.data);
+      for (let y = 2; y < c.height - 2; y++) {
+        for (let x = 2; x < c.width - 2; x++) {
+          const i = (y * c.width + x) * 4 + 3;
+          if (src[i] < 10) continue;
+          if (src[i] > 245) continue;
+          let sum = 0, n = 0;
+          for (let yy = -1; yy <= 1; yy++) {
+            for (let xx = -1; xx <= 1; xx++) {
+              const a = src[((y + yy) * c.width + x + xx) * 4 + 3];
+              if (a > 5) { sum += a; n++; }
+            }
+          }
+          img.data[i] = n > 0 ? sum / n : src[i];
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      S.cutoutCanvas = c;
+      renderAll();
+    }
+
+    // ============ 保存前预检 ============
+    function runPrecheck() {
+      if (!S.finalCanvas) {
+        setStatus('预检失败：请先上传照片。');
+        return;
+      }
+
+      const issues = [];
+
+      // 1. 检查尺寸是否过小
+      if (S.size.w < 260) issues.push('当前尺寸偏小，打印可能模糊。');
+      if (S.imgCanvas.width < 400 && S.imgCanvas.height < 400) issues.push('原图分辨率偏低，建议用更清晰的照片。');
+
+      // 2. 检查人物是否在框内
+      const fb = S.faceBox;
+      if (fb) {
+        const faceCx = S.offsetX + (fb.x + fb.w / 2) * S.scale;
+        const faceCy = S.offsetY + (fb.y + fb.h / 2) * S.scale;
+        if (faceCx < S.size.w * 0.15 || faceCx > S.size.w * 0.85) issues.push('人物可能未居中，可拖拽调整位置。');
+        if (faceCy < S.size.h * 0.05 || faceCy > S.size.h * 0.6) issues.push('人物位置偏高或偏低，可拖拽调整。');
+      }
+
+      // 3. 检查背景和人物是否冲突
+      if (S.background.color) {
+        const bgHex = S.background.color.toLowerCase();
+        if (bgHex === '#ffffff') issues.push('当前为白底。如需蓝底/红底报名照，请切换底色。');
+        if (bgHex === '#d10000' && (S.size.key === 'passport' || S.size.key === 'visa')) issues.push('护照/签证通常使用白底或蓝底，请确认要求。');
+      }
+
+      // 4. 美颜参数检查
+      const slim = +$('slim').value;
+      if (slim > 80) issues.push('瘦脸值过大可能导致不自然。');
+
+      if (issues.length === 0) {
+        setStatus('预检通过！照片符合常用要求，可以保存。');
+      } else {
+        setStatus('预检发现 ' + issues.length + ' 个问题：' + issues.join('；'));
+      }
+    }
+  </script>
+</body>
+</html>
+
