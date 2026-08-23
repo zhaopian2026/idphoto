@@ -349,6 +349,12 @@
       border-radius: 4px;
       font-size: 13px;
     }
+
+    /* 手机保存说明（仅触屏设备显示） */
+    .album-hint { display: none; }
+    @media (pointer: coarse) {
+      .album-hint { display: block; color: #687385; font-size: 12px; line-height: 1.6; margin-top: 8px; }
+    }
   </style>
 </head>
 <body>
@@ -480,6 +486,7 @@
           <button id="savePhoto" class="primary">保存证件照</button>
           <button id="saveLayout">保存排版图</button>
         </div>
+        <div class="album-hint">手机点「保存」：先弹系统菜单，选「存储图像 / 保存图片」就能存进相册；没有菜单就直接长按图片保存。</div>
         <button id="precheck" style="width:100%;margin-top:8px;">保存前预检</button>
       </details>
 
@@ -2034,6 +2041,11 @@ function applyPostProcessing(rawCanvas) {
         reader.readAsDataURL(blob);
         return;
       }
+      // 手机：先弹系统菜单可直接存相册；不支持就改成长按图片保存
+      if (isTouchMobile()) {
+        saveToAlbumOrHint(blob, filename);
+        return;
+      }
       // 浏览器支持系统保存选择器时使用（Chrome/Edge）
       if (window.showSaveFilePicker) {
         (async function() {
@@ -2074,6 +2086,43 @@ function applyPostProcessing(rawCanvas) {
         if (!blob) { setStatus('错误：图片生成失败'); return; }
         saveBlob(blob, filename);
       }, 'image/png');
+    }
+
+    // ---- 手机保存到相册 ----
+    function isTouchMobile() {
+      return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+             (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer: coarse)').matches);
+    }
+
+    function saveToAlbumOrHint(blob, filename) {
+      try {
+        const file = new File([blob], filename, { type: blob.type });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file], title: filename }).then(function() {
+            setStatus('已弹出系统菜单：选「存储图像 / 保存图片」即可存入相册。');
+          }).catch(function() {
+            showLongPressSave(blob);
+          });
+          return;
+        }
+      } catch (e) { /* 不支持就长按保存 */ }
+      showLongPressSave(blob);
+    }
+
+    function showLongPressSave(blob) {
+      const url = URL.createObjectURL(blob);
+      const ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,14,20,.94);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:18px;';
+      ov.innerHTML =
+        '<div style="color:#fff;font-size:15px;text-align:center;line-height:1.6;">长按下方图片，选「保存图片 / 存储图像」<br>即可存入手机相册</div>' +
+        '<img src="' + url + '" style="max-width:94%;max-height:62%;border-radius:8px;background:#fff;object-fit:contain;">' +
+        '<button style="min-height:46px;padding:0 26px;border-radius:8px;border:none;background:#4a90d9;color:#fff;font-size:16px;">关 闭</button>';
+      ov.querySelector('button').onclick = function() {
+        document.body.removeChild(ov);
+        URL.revokeObjectURL(url);
+      };
+      document.body.appendChild(ov);
+      setStatus('请长按图片保存到相册。');
     }
 
     function photoName(layout) {
